@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartFX — Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060806;
+    --surface: #0e120d;
+    --surface-2: #131811;
+    --border: #1f2a1a;
+    --accent: #8fd400;
+    --accent-bright: #b4ff39;
+    --accent-dim: #8fd40022;
+    --win: #8fd400;
+    --loss: #ff4d5e;
+    --text: #eef4e8;
+    --text-muted: #6b7666;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Ambient sparkline drifting behind everything */
+  #sparkline-bg {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 28px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent-bright), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 15px;
+    color: #060806;
+  }
+
+  .brand-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.02em;
+  }
+
+  .brand-name span { color: var(--accent); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 28px;
+    box-shadow: 0 20px 60px -20px rgba(143, 212, 0, 0.10);
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 13.5px;
+    margin: 0 0 26px;
+    line-height: 1.5;
+  }
+
+  .field {
+    margin-bottom: 16px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  input {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  input::placeholder { color: #4a5361; }
+
+  input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+
+  button[type="submit"] {
+    width: 100%;
+    background: var(--accent);
+    color: #0a0f07;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+
+  button[type="submit"]:hover { filter: brightness(1.08); }
+  button[type="submit"]:active { transform: scale(0.99); }
+
+  button[type="submit"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: none;
+  }
+
+  .toggle-row {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 13.5px;
+    color: var(--text-muted);
+  }
+
+  .toggle-row button {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 4px;
+  }
+
+  .status {
+    margin-top: 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.45;
+    display: none;
+  }
+
+  .status.show { display: block; }
+
+  .status.error {
+    background: #ff4d5e14;
+    border: 1px solid #ff4d5e33;
+    color: #ff8a94;
+  }
+
+  .status.success {
+    background: #8fd40014;
+    border: 1px solid #8fd40033;
+    color: #b4ff39;
+  }
+
+  .footnote {
+    text-align: center;
+    color: #3d4552;
+    font-size: 11.5px;
+    margin-top: 22px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="sparkline-bg"></canvas>
+
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div class="brand-name">Smart<span>FX</span></div>
+  </div>
+
+  <div class="card">
+    <h1 id="form-title">Welcome back</h1>
+    <p class="subtitle" id="form-subtitle">Sign in to view your live signal history and performance.</p>
+
+    <form id="auth-form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@example.com" required autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password" minlength="6" />
+      </div>
+      <button type="submit" id="submit-btn">Sign In</button>
+    </form>
+
+    <div class="status" id="status-box"></div>
+
+    <div class="toggle-row">
+      <span id="toggle-text">Don't have an account?</span>
+      <button type="button" id="toggle-btn">Sign up</button>
+    </div>
+  </div>
+
+  <div class="footnote">SIGNAL_TRACKING · v1.0</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  // ==========================================================
+  // SUPABASE CONFIG
+  // ==========================================================
+  const SUPABASE_URL = "https://gvzichtbxctztytkggxp.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_ZQgd4qHRMwWcpfdA64R_HA_xU2GuyfC";
+
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+  // ==========================================================
+  // AUTH FORM LOGIC
+  // ==========================================================
+  let mode = "signin"; // "signin" | "signup"
+
+  const form = document.getElementById("auth-form");
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const submitBtn = document.getElementById("submit-btn");
+  const statusBox = document.getElementById("status-box");
+  const formTitle = document.getElementById("form-title");
+  const formSubtitle = document.getElementById("form-subtitle");
+  const toggleText = document.getElementById("toggle-text");
+  const toggleBtn = document.getElementById("toggle-btn");
+
+  function showStatus(message, type) {
+    statusBox.textContent = message;
+    statusBox.className = "status show " + type;
+  }
+
+  function clearStatus() {
+    statusBox.className = "status";
+    statusBox.textContent = "";
+  }
+
+  function setMode(newMode) {
+    mode = newMode;
+    clearStatus();
+    if (mode === "signin") {
+      formTitle.textContent = "Welcome back";
+      formSubtitle.textContent = "Sign in to view your live signal history and performance.";
+      submitBtn.textContent = "Sign In";
+      toggleText.textContent = "Don't have an account?";
+      toggleBtn.textContent = "Sign up";
+    } else {
+      formTitle.textContent = "Create your account";
+      formSubtitle.textContent = "Track SmartFX signals, win rate, and performance over time.";
+      submitBtn.textContent = "Sign Up";
+      toggleText.textContent = "Already have an account?";
+      toggleBtn.textContent = "Sign in";
+    }
+  }
+
+  toggleBtn.addEventListener("click", () => {
+    setMode(mode === "signin" ? "signup" : "signin");
+  });
+
+  // If already logged in, skip straight to the dashboard.
+  async function checkExistingSession() {
+    const { data } = await supabaseClient.auth.getSession();
+    if (data.session) {
+      window.location.href = "dashboard.html";
+    }
+  }
+  checkExistingSession();
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearStatus();
+    submitBtn.disabled = true;
+    submitBtn.textContent = mode === "signin" ? "Signing in..." : "Creating account...";
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    try {
+      if (mode === "signin") {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        window.location.href = "dashboard.html";
+      } else {
+        const { error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) throw error;
+        showStatus("Account created. Check your email to confirm, then sign in.", "success");
+        setMode("signin");
+      }
+    } catch (err) {
+      showStatus(err.message || "Something went wrong. Please try again.", "error");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = mode === "signin" ? "Sign In" : "Sign Up";
+    }
+  });
+
+  // ==========================================================
+  // AMBIENT SPARKLINE BACKGROUND (signature element)
+  // Quiet, slow-drifting candlestick-like line behind the card.
+  // ==========================================================
+  (function sparkline() {
+    const canvas = document.getElementById("sparkline-bg");
+    const ctx = canvas.getContext("2d");
+    let w, h;
+
+    function resize() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    const points = [];
+    const pointCount = 60;
+    let seed = 0.5;
+    for (let i = 0; i < pointCount; i++) {
+      seed += (Math.random() - 0.5) * 0.15;
+      seed = Math.max(0.15, Math.min(0.85, seed));
+      points.push(seed);
+    }
+
+    let offset = 0;
+
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+      const midY = h * 0.42;
+      const amp = h * 0.16;
+      const spacing = w / (pointCount - 1);
+
+      ctx.beginPath();
+      ctx.strokeStyle = "#8fd400";
+      ctx.lineWidth = 1.4;
+
+      for (let i = 0; i < pointCount; i++) {
+        const x = i * spacing;
+        const wobble = Math.sin((i + offset) * 0.3) * 6;
+        const y = midY + (points[i] - 0.5) * amp * 2 + wobble;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // gradient fade under the line
+      const grad = ctx.createLinearGradient(0, midY - amp, 0, midY + amp * 2);
+      grad.addColorStop(0, "rgba(143, 212, 0, 0.10)");
+      grad.addColorStop(1, "rgba(143, 212, 0, 0)");
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      offset += 0.01;
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+</script>
+
+</body>
+</html>

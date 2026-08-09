@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartFX — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060806;
+    --surface: #0e120d;
+    --surface-2: #131811;
+    --border: #1f2a1a;
+    --accent: #8fd400;
+    --accent-bright: #b4ff39;
+    --accent-dim: #8fd40022;
+    --win: #8fd400;
+    --loss: #ff4d5e;
+    --expired: #d4a900;
+    --text: #eef4e8;
+    --text-muted: #6b7666;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ---------- HEADER ---------- */
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(6, 8, 6, 0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent-bright), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 13px;
+    color: #0a0f07;
+  }
+
+  .brand-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.02em;
+  }
+
+  .brand-name span { color: var(--accent); }
+
+  #signout-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 7px 13px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+
+  #signout-btn:hover { color: var(--text); border-color: #3a4530; }
+
+  /* ---------- LAYOUT ---------- */
+
+  main {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 20px 16px 60px;
+  }
+
+  .section-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 28px 0 12px;
+  }
+
+  .section-title:first-child { margin-top: 0; }
+
+  /* ---------- STAT CARDS ---------- */
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .stat-value.win-color { color: var(--win); }
+  .stat-value.loss-color { color: var(--loss); }
+
+  .stat-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ---------- CHART ---------- */
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 16px 14px;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+
+  .chart-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .chart-current {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  #perf-canvas {
+    width: 100%;
+    height: 130px;
+    display: block;
+  }
+
+  /* ---------- SIGNAL LIST ---------- */
+
+  .signal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .signal-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .signal-left {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .signal-pair-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .signal-pair {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+
+  .dir-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.03em;
+  }
+
+  .dir-badge.buy { background: #8fd40022; color: var(--win); }
+  .dir-badge.sell { background: #ff4d5e22; color: var(--loss); }
+
+  .signal-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .signal-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .status-badge {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.02em;
+  }
+
+  .status-badge.win { background: #8fd40018; color: var(--win); }
+  .status-badge.loss { background: #ff4d5e18; color: var(--loss); }
+  .status-badge.open { background: #6b766618; color: var(--text-muted); }
+  .status-badge.expired { background: #d4a90018; color: var(--expired); }
+
+  .signal-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: #3d4834;
+  }
+
+  .empty-state, .loading-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+
+  .empty-state .big {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  #load-more-btn {
+    width: 100%;
+    margin-top: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 11px;
+    border-radius: 9px;
+    cursor: pointer;
+  }
+
+  #load-more-btn:hover { color: var(--text); }
+  #load-more-btn.hidden { display: none; }
+
+  /* ---------- PERIOD FILTER BAR ---------- */
+
+  .period-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .period-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+
+  .period-pill.active {
+    background: var(--accent-dim);
+    border-color: #8fd40055;
+    color: var(--accent);
+  }
+
+  /* ---------- SIGNAL ROW (tappable) ---------- */
+
+  .signal-row {
+    cursor: pointer;
+    transition: border-color 0.12s ease;
+  }
+
+  .signal-row:active { border-color: #8fd40055; }
+
+  .chart-hint {
+    font-size: 9.5px;
+    color: #3d4834;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+
+  /* ---------- TRADINGVIEW MODAL ---------- */
+
+  #tv-modal {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* dynamic viewport height - avoids the mobile address-bar gap that was throwing off touch coordinates while drawing */
+    background: #040504;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    overscroll-behavior: contain;
+  }
+
+  #tv-modal.open { display: flex; }
+
+  /* Locks the page behind the modal so it can't scroll/rubber-band while
+     you're drawing on the chart - that fighting-for-touch was the cause
+     of the shaky/unresponsive lines. */
+  body.modal-open {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .tv-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    touch-action: none;
+    flex-shrink: 0;
+  }
+
+  .tv-modal-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .tv-modal-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  #tv-close-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  #tv_chart_container {
+    flex: 1;
+    width: 100%;
+    min-height: 0; /* required so flex:1 actually fills remaining space instead of overflowing */
+    touch-action: auto; /* let the chart's own iframe fully own touch/drawing gestures, no interference */
+  }
+
+  .tv-modal-footer {
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    line-height: 1.5;
+    touch-action: none;
+    flex-shrink: 0;
+  }
+
+  .tv-level {
+    font-family: 'JetBrains Mono', monospace;
+    display: inline-block;
+    margin-right: 12px;
+  }
+
+  .tv-level.entry { color: var(--text); }
+  .tv-level.sl { color: var(--loss); }
+  .tv-level.tp { color: var(--win); }
+
+  .app-version {
+    text-align: center;
+    color: #2c331f;
+    font-size: 10.5px;
+    margin-top: 24px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div class="brand-name">Smart<span>FX</span></div>
+  </div>
+  <button id="signout-btn">Sign Out</button>
+</header>
+
+<main>
+
+  <div class="period-bar">
+    <button class="period-pill" data-period="today">Today</button>
+    <button class="period-pill" data-period="week">Week</button>
+    <button class="period-pill" data-period="month">Month</button>
+    <button class="period-pill active" data-period="all">All</button>
+  </div>
+
+  <div class="section-title">Overview</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Signals</div>
+      <div class="stat-value" id="stat-total">—</div>
+      <div class="stat-sub" id="stat-total-sub">&nbsp;</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-value win-color" id="stat-winrate">—</div>
+      <div class="stat-sub" id="stat-winrate-sub">&nbsp;</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Wins / Losses</div>
+      <div class="stat-value" id="stat-wl">—</div>
+      <div class="stat-sub" id="stat-wl-sub">&nbsp;</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Open Now</div>
+      <div class="stat-value" id="stat-open">—</div>
+      <div class="stat-sub" id="stat-open-sub">&nbsp;</div>
+    </div>
+  </div>
+
+  <div class="section-title">Performance</div>
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title">Cumulative Win Rate</div>
+      <div class="chart-current" id="chart-current-value">—</div>
+    </div>
+    <canvas id="perf-canvas"></canvas>
+  </div>
+
+  <div class="section-title">Signal History</div>
+  <div id="signals-container">
+    <div class="loading-state">Loading signals…</div>
+  </div>
+  <button id="load-more-btn" class="hidden">Load more</button>
+
+  <div class="app-version">SMARTFX_DASHBOARD · v1.2</div>
+
+</main>
+
+<div id="tv-modal">
+  <div class="tv-modal-header">
+    <div>
+      <div class="tv-modal-title" id="tv-modal-title">—</div>
+      <div class="tv-modal-sub" id="tv-modal-sub">—</div>
+    </div>
+    <button id="tv-close-btn">✕</button>
+  </div>
+  <div id="tv_chart_container"></div>
+  <div class="tv-modal-footer" id="tv-modal-footer">
+    Use the drawing tools on the chart to mark entry, stop loss, and take-profit levels yourself.
+  </div>
+</div>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  // ==========================================================
+  // SUPABASE CONFIG
+  // ==========================================================
+  const SUPABASE_URL = "https://gvzichtbxctztytkggxp.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_ZQgd4qHRMwWcpfdA64R_HA_xU2GuyfC";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+  // ---------- AUTH GUARD ----------
+  async function requireAuth() {
+    const { data } = await supabaseClient.auth.getSession();
+    if (!data.session) {
+      window.location.href = "index.html";
+      return false;
+    }
+    return true;
+  }
+
+  document.getElementById("signout-btn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "index.html";
+  });
+
+  // ---------- DATA FETCH ----------
+  // Fetches the full signal history once. Stats, chart, period filtering,
+  // and the signal list all derive from this single dataset - keeps
+  // everything in sync and avoids repeated network calls when switching
+  // Today/Week/Month/All.
+  let fullData = [];
+  let errorShown = false;
+
+  async function fetchAllSignals() {
+    const { data, error } = await supabaseClient
+      .from("signals")
+      .select("*")
+      .order("sent_at", { ascending: false });
+
+    if (error) {
+      showFetchError(error);
+      return [];
+    }
+    return data || [];
+  }
+
+  function showFetchError(error) {
+    console.error("Supabase fetch error:", error);
+    if (errorShown) return;
+    errorShown = true;
+    const container = document.getElementById("signals-container");
+    container.innerHTML = `
+      <div class="empty-state" style="text-align:left; background:#ff4d5e0f; border:1px solid #ff4d5e33; border-radius:10px; padding:16px;">
+        <div class="big" style="color:#ff8a94;">Couldn't load signals</div>
+        <div style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#ffb3ba; margin-top:8px; word-break:break-word;">
+          ${error.message || "Unknown error"}${error.code ? " (code: " + error.code + ")" : ""}
+        </div>
+      </div>`;
+  }
+
+  // ---------- PERIOD FILTERING ----------
+  let currentPeriod = "all";
+
+  function filterByPeriod(data, period) {
+    if (period === "all") return data;
+
+    const now = new Date();
+    let cutoff;
+
+    if (period === "today") {
+      cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (period === "week") {
+      cutoff = new Date(now);
+      cutoff.setDate(cutoff.getDate() - 7);
+    } else if (period === "month") {
+      cutoff = new Date(now);
+      cutoff.setDate(cutoff.getDate() - 30);
+    }
+
+    return data.filter(s => new Date(s.sent_at) >= cutoff);
+  }
+
+  document.querySelectorAll(".period-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".period-pill").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentPeriod = btn.dataset.period;
+      renderAll();
+    });
+  });
+
+  // ---------- STATS RENDERING ----------
+  function renderStats(data) {
+    const total = data.length;
+    const wins = data.filter(s => s.status === "WIN").length;
+    const losses = data.filter(s => s.status === "LOSS").length;
+    const expired = data.filter(s => s.status === "EXPIRED").length;
+    const open = data.filter(s => s.status === "OPEN").length;
+    const decided = wins + losses;
+    const winRate = decided > 0 ? ((wins / decided) * 100).toFixed(1) : "—";
+
+    document.getElementById("stat-total").textContent = total;
+    document.getElementById("stat-total-sub").textContent = `${expired} expired`;
+
+    document.getElementById("stat-winrate").textContent = decided > 0 ? winRate + "%" : "—";
+    document.getElementById("stat-winrate-sub").textContent = decided > 0 ? `of ${decided} decided` : "no decided trades yet";
+
+    document.getElementById("stat-wl").innerHTML =
+      `<span style="color:var(--win)">${wins}</span> / <span style="color:var(--loss)">${losses}</span>`;
+    document.getElementById("stat-wl-sub").textContent = "win / loss";
+
+    document.getElementById("stat-open").textContent = open;
+    document.getElementById("stat-open-sub").textContent = "awaiting outcome";
+
+    document.getElementById("chart-current-value").textContent = decided > 0 ? winRate + "%" : "—";
+  }
+
+  // ---------- CHART (cumulative win rate over time, no library) ----------
+  function renderChart(data) {
+    const canvas = document.getElementById("perf-canvas");
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 130 * dpr;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = 130;
+    ctx.clearRect(0, 0, w, h);
+
+    // chart wants oldest-first regardless of the list's newest-first order
+    const chronological = [...data].sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at));
+    const decidedOnly = chronological.filter(s => s.status === "WIN" || s.status === "LOSS");
+
+    if (decidedOnly.length < 2) {
+      ctx.fillStyle = "#3d4834";
+      ctx.font = "12px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Not enough decided trades yet to chart", w / 2, h / 2);
+      return;
+    }
+
+    let wins = 0;
+    const cumulative = decidedOnly.map((s, i) => {
+      if (s.status === "WIN") wins++;
+      return (wins / (i + 1)) * 100;
+    });
+
+    const min = Math.min(...cumulative, 0);
+    const max = Math.max(...cumulative, 100);
+    const pad = 10;
+    const usableH = h - pad * 2;
+
+    function xAt(i) { return (i / (cumulative.length - 1)) * w; }
+    function yAt(v) { return pad + usableH - ((v - min) / (max - min || 1)) * usableH; }
+
+    ctx.beginPath();
+    ctx.moveTo(0, yAt(cumulative[0]));
+    cumulative.forEach((v, i) => ctx.lineTo(xAt(i), yAt(v)));
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "rgba(143, 212, 0, 0.18)");
+    grad.addColorStop(1, "rgba(143, 212, 0, 0)");
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    cumulative.forEach((v, i) => {
+      const x = xAt(i), y = yAt(v);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = "#8fd400";
+    ctx.lineWidth = 2;
+    ctx.lineJoin = "round";
+    ctx.stroke();
+
+    const lastX = xAt(cumulative.length - 1);
+    const lastY = yAt(cumulative[cumulative.length - 1]);
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#b4ff39";
+    ctx.fill();
+  }
+
+  // ---------- SIGNAL LIST RENDERING (client-side paginated from fullData) ----------
+  const PAGE_SIZE = 20;
+  let visibleCount = PAGE_SIZE;
+  let currentFiltered = [];
+
+  function statusClass(status) {
+    if (status === "WIN") return "win";
+    if (status === "LOSS") return "loss";
+    if (status === "EXPIRED") return "expired";
+    return "open";
+  }
+
+  function formatDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " · " +
+           d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
+  function renderSignalRow(s) {
+    const dirClass = s.direction === "BUY" ? "buy" : "sell";
+    const statusLabel = s.status === "WIN" && s.final_level ? `WIN · ${s.final_level}` : s.status;
+
+    return `
+      <div class="signal-row" data-signal-id="${s.signal_id}">
+        <div class="signal-left">
+          <div class="signal-pair-row">
+            <span class="signal-pair">${s.pair}</span>
+            <span class="dir-badge ${dirClass}">${s.direction}</span>
+          </div>
+          <div class="signal-meta">${s.timeframe} · Entry ${s.entry} · ${formatDate(s.sent_at)}</div>
+          <div class="chart-hint">Tap to open chart →</div>
+        </div>
+        <div class="signal-right">
+          <span class="status-badge ${statusClass(s.status)}">${statusLabel}</span>
+          <span class="signal-id">#${s.signal_id}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSignalList() {
+    if (errorShown) return;
+    const container = document.getElementById("signals-container");
+    const slice = currentFiltered.slice(0, visibleCount);
+
+    if (slice.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="big">No signals in this period</div>
+          Try a wider range, or wait for the next signal to fire.
+        </div>`;
+      document.getElementById("load-more-btn").classList.add("hidden");
+      return;
+    }
+
+    container.innerHTML = slice.map(renderSignalRow).join("");
+    container.querySelectorAll(".signal-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const id = row.dataset.signalId;
+        const signal = currentFiltered.find(s => String(s.signal_id) === String(id));
+        if (signal) openTradingViewModal(signal);
+      });
+    });
+
+    const loadMoreBtn = document.getElementById("load-more-btn");
+    if (currentFiltered.length > visibleCount) {
+      loadMoreBtn.classList.remove("hidden");
+    } else {
+      loadMoreBtn.classList.add("hidden");
+    }
+  }
+
+  document.getElementById("load-more-btn").addEventListener("click", () => {
+    visibleCount += PAGE_SIZE;
+    renderSignalList();
+  });
+
+  // ---------- MASTER RENDER (called on load + whenever period changes) ----------
+  function renderAll() {
+    currentFiltered = filterByPeriod(fullData, currentPeriod);
+    visibleCount = PAGE_SIZE;
+    renderStats(currentFiltered);
+    renderChart(currentFiltered);
+    renderSignalList();
+  }
+
+  // ---------- TRADINGVIEW MODAL ----------
+  // Maps SmartFX's pair/timeframe format to TradingView's symbol/interval format.
+  const TV_SYMBOL_MAP = {
+    "BTCUSDT": "BINANCE:BTCUSDT",
+    "ETHUSDT": "BINANCE:ETHUSDT",
+    "SOLUSDT": "BINANCE:SOLUSDT",
+    "EUR/USD": "FX:EURUSD",
+    "GBP/USD": "FX:GBPUSD",
+    "USD/JPY": "FX:USDJPY",
+    "XAU/USD": "OANDA:XAUUSD",
+  };
+
+  const TV_INTERVAL_MAP = {
+    "15m": "15",
+    "1h": "60",
+    "4h": "240",
+  };
+
+  let tvWidget = null;
+  let scrollYBeforeModal = 0;
+
+  function openTradingViewModal(signal) {
+    const modal = document.getElementById("tv-modal");
+    const symbol = TV_SYMBOL_MAP[signal.pair] || "BINANCE:BTCUSDT";
+    const interval = TV_INTERVAL_MAP[signal.timeframe] || "60";
+
+    document.getElementById("tv-modal-title").textContent = `${signal.pair} · ${signal.direction}`;
+    document.getElementById("tv-modal-sub").textContent = `Signal #${signal.signal_id} · ${formatDate(signal.sent_at)}`;
+
+    document.getElementById("tv-modal-footer").innerHTML = `
+      <span class="tv-level entry">Entry ${signal.entry}</span>
+      <span class="tv-level sl">SL ${signal.sl}</span>
+      <span class="tv-level tp">TP1 ${signal.tp1}</span>
+      <span class="tv-level tp">TP2 ${signal.tp2}</span>
+      <span class="tv-level tp">TP3 ${signal.tp3}</span>
+    `;
+
+    // Lock the page behind the modal so it can't scroll/rubber-band while
+    // the chart is open - this is what caused drawing to feel shaky.
+    scrollYBeforeModal = window.scrollY;
+    document.body.classList.add("modal-open");
+    document.body.style.top = `-${scrollYBeforeModal}px`;
+
+    modal.classList.add("open");
+
+    const container = document.getElementById("tv_chart_container");
+    container.innerHTML = ""; // clear any previous widget before re-initializing
+
+    tvWidget = new TradingView.widget({
+      container_id: "tv_chart_container",
+      autosize: true,
+      symbol: symbol,
+      interval: interval,
+      timezone: "Etc/UTC",
+      theme: "dark",
+      style: "1",
+      locale: "en",
+      toolbar_bg: "#0e120d",
+      enable_publishing: false,
+      allow_symbol_change: true,
+      hide_side_toolbar: false,
+      withdateranges: true,
+      save_image: false,
+      studies: [],
+    });
+  }
+
+  function closeTradingViewModal() {
+    document.getElementById("tv-modal").classList.remove("open");
+    document.body.classList.remove("modal-open");
+    document.body.style.top = "";
+    window.scrollTo(0, scrollYBeforeModal);
+  }
+
+  document.getElementById("tv-close-btn").addEventListener("click", closeTradingViewModal);
+
+  // ---------- INIT ----------
+  async function init() {
+    const ok = await requireAuth();
+    if (!ok) return;
+
+    fullData = await fetchAllSignals();
+    renderAll();
+  }
+
+  init();
+</script>
+
+</body>
+</html>

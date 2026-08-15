@@ -1,0 +1,2469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SmartFX — Dashboard</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#060806">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060806;
+    --surface: #0e120d;
+    --surface-2: #131811;
+    --border: #1f2a1a;
+    --accent: #8fd400;
+    --accent-bright: #b4ff39;
+    --accent-dim: #8fd40022;
+    --win: #8fd400;
+    --loss: #ff4d5e;
+    --expired: #d4a900;
+    --text: #eef4e8;
+    --text-muted: #6b7666;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent; /* was an opaque color here, which painted directly over the wallpaper layer and hid it completely */
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ---------- FIXED WALLPAPER BACKGROUND ---------- */
+  /* Stays put behind everything while the page scrolls, like a phone
+     wallpaper. Dark green base, big faint SmartFX wordmark, lightning
+     accent lines, and a reserved slot for the robot artwork once
+     that's supplied - it just gets dropped into #wallpaper-robot-slot. */
+
+  #app-wallpaper {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, #0f1a08 0%, transparent 60%),
+      linear-gradient(180deg, #060806 0%, #050704 100%);
+    will-change: transform; /* forces the browser to composite this layer on the GPU instead of repainting it on every scroll frame - that repaint-per-frame was the cause of the visible shake/stutter */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .wallpaper-wordmark {
+    position: absolute;
+    top: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 20vw;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: transparent;
+    -webkit-text-stroke: 1px #1a2812;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .wallpaper-wordmark span {
+    -webkit-text-stroke: 1px #2a3d16;
+  }
+
+  .wallpaper-bolt {
+    position: absolute;
+    stroke: #8fd400;
+    opacity: 0.14;
+    fill: none;
+    stroke-width: 1.5;
+  }
+
+  .wallpaper-bolt.b1 { top: 20%; left: 8%; width: 60px; }
+  .wallpaper-bolt.b2 { top: 55%; right: 10%; width: 46px; opacity: 0.1; }
+  .wallpaper-bolt.b3 { bottom: 15%; left: 14%; width: 38px; opacity: 0.09; }
+
+  #wallpaper-robot-slot {
+    position: absolute;
+    top: 9%;
+    right: -6%;
+    width: min(85vw, 460px);
+    opacity: 0.4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #wallpaper-robot-slot img {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: grayscale(0.2) brightness(0.9);
+  }
+
+  /* ---------- HEADER ---------- */
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(6, 8, 6, 0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent-bright), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 13px;
+    color: #0a0f07;
+  }
+
+  .brand-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.02em;
+  }
+
+  /* ---------- BOT STATUS STRIP ---------- */
+
+  #bot-status-strip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: rgba(6, 8, 6, 0.6);
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-dot.online { background: var(--win); box-shadow: 0 0 6px #8fd40088; }
+  .status-dot.delayed { background: var(--expired); box-shadow: 0 0 6px #d4a90088; }
+  .status-dot.offline { background: var(--loss); box-shadow: 0 0 6px #ff4d5e88; }
+  .status-dot.unknown { background: #3d4834; }
+
+  .brand-name span { color: var(--accent); }
+
+  #signout-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 7px 13px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+
+  #signout-btn:hover { color: var(--text); border-color: #3a4530; }
+
+  /* ---------- SECTION JUMP BAR ---------- */
+  /* Sticky row just below the header/status strip so Overview,
+     Scanner, Activity, and History are one tap away no matter how far
+     down the page you've scrolled - most useful for getting back up
+     from deep in Signal History without manually scrolling. */
+
+  #section-jump-bar {
+    position: sticky;
+    top: 58px; /* sits just below the header, which is itself sticky at top:0 */
+    z-index: 9;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 8px 16px;
+    background: rgba(6, 8, 6, 0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+  }
+
+  #section-jump-bar::-webkit-scrollbar { display: none; }
+
+  .section-jump-btn {
+    flex-shrink: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 13px;
+    border-radius: 20px;
+    cursor: pointer;
+    scroll-snap-align: start;
+  }
+
+  .section-jump-btn.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent-bright);
+  }
+
+  /* ---------- EXCLUSIVE DASHBOARD VIEWS ---------- */
+  /* Only one .dash-view is shown at a time - tapping a section-jump-bar
+     tab swaps which one, the same "just this, nothing else" behavior
+     as the existing Chart button takeover, instead of scrolling past
+     other sections to reach it. */
+
+  .dash-view { display: none; }
+  .dash-view.active { display: block; }
+
+  /* ---------- BOTTOM NAV ---------- */
+
+  #bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    display: flex;
+    background: rgba(10, 13, 9, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .nav-item {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 4px 8px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .nav-item span {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .nav-item.active { color: var(--accent); }
+  .nav-item.disabled { opacity: 0.35; }
+
+  /* ---------- LAYOUT ---------- */
+
+  main {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 20px 16px 90px;
+  }
+
+  .section-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 28px 0 12px;
+  }
+
+  .section-title:first-child { margin-top: 0; }
+
+  /* ---------- STAT CARDS ---------- */
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .stat-value.win-color { color: var(--win); }
+  .stat-value.loss-color { color: var(--loss); }
+
+  .stat-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .stat-delta {
+    font-size: 10.5px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-left: 4px;
+  }
+
+  .stat-delta.up { color: var(--win); }
+  .stat-delta.down { color: var(--loss); }
+
+  /* ---------- LATEST SIGNAL (featured) ---------- */
+
+  #latest-signal-card {
+    background: linear-gradient(150deg, #131811 0%, #0e120d 70%);
+    border: 1px solid #8fd40033;
+    border-radius: 14px;
+    padding: 18px 18px 16px;
+    margin-bottom: 8px;
+    box-shadow: 0 16px 40px -18px rgba(143, 212, 0, 0.14);
+  }
+
+  .ls-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+
+  .ls-pair-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ls-pair {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 21px;
+  }
+
+  .ls-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .ls-confidence {
+    text-align: right;
+  }
+
+  .ls-confidence-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .ls-confidence-label {
+    font-size: 9.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+  }
+
+  .ls-levels {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .ls-level {
+    background: rgba(0,0,0,0.25);
+    border-radius: 8px;
+    padding: 8px 4px;
+    text-align: center;
+  }
+
+  .ls-level-label {
+    font-size: 8.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .ls-level-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    margin-top: 3px;
+  }
+
+  .ls-level.sl .ls-level-value { color: var(--loss); }
+  .ls-level.tp .ls-level-value { color: var(--win); }
+  .ls-level.atr .ls-level-value { color: #d4a900; }
+
+  /* ---------- STRATEGY CONFIRMATION CHECKLIST ---------- */
+
+  .checklist-toggle {
+    margin-top: 10px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    cursor: pointer;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .checklist-toggle:active { color: var(--accent); }
+
+  .checklist-grid {
+    display: none;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+    margin-top: 8px;
+  }
+
+  .checklist-grid.open { display: grid; }
+
+  .checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 10.5px;
+  }
+
+  .checklist-icon {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .checklist-icon.pass { background: #8fd40022; color: var(--win); }
+  .checklist-icon.fail { background: #ff4d5e18; color: var(--loss); }
+  .checklist-icon.na { background: #3d483422; color: var(--text-muted); }
+
+  .checklist-label { color: var(--text-muted); }
+  .checklist-item.pass .checklist-label { color: var(--text); }
+
+  /* ---------- MARKET SCANNER ---------- */
+
+  .scanner-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .scanner-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .scanner-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .scanner-pair {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 13.5px;
+  }
+
+  .scanner-trend {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .scanner-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .scanner-confidence {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    min-width: 32px;
+    text-align: right;
+  }
+
+  .scanner-status-badge {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .scanner-status-badge.signal { background: #8fd40022; color: var(--win); }
+  .scanner-status-badge.setup_ready { background: #d4a90022; color: var(--expired); }
+  .scanner-status-badge.watching { background: #3d483422; color: var(--text-muted); }
+  .scanner-status-badge.no_setup { background: #3d483422; color: #4a5546; }
+
+  .scanner-updated {
+    font-size: 9.5px;
+    color: #3d4834;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 8px;
+    text-align: center;
+  }
+
+  /* ---------- ACTIVITY FEED ---------- */
+
+  .feed-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .feed-item {
+    display: flex;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    align-items: flex-start;
+  }
+
+  .feed-item:nth-child(odd) { background: rgba(255,255,255,0.015); }
+
+  .feed-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #3d4834;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding-top: 1px;
+  }
+
+  .feed-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .feed-dot.signal_sent { background: var(--accent); }
+  .feed-dot.trade_outcome_win { background: var(--win); }
+  .feed-dot.trade_outcome_loss { background: var(--loss); }
+  .feed-dot.trade_outcome_expired { background: var(--expired); }
+  .feed-dot.scan_status_change { background: #4a5546; }
+  .feed-dot.bot_restart { background: #6b7666; }
+
+  .feed-message {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .feed-message .highlight { color: var(--text); }
+
+  #activity-feed-container .load-more-feed-btn {
+    width: 100%;
+    margin-top: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 9px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  /* ---------- CHART ---------- */
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 16px 14px;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+
+  .chart-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .chart-current {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  #perf-canvas {
+    width: 100%;
+    height: 190px;
+    display: block;
+  }
+
+  /* ---------- SIGNAL LIST ---------- */
+
+  .signal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .signal-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .signal-left {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .signal-pair-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .signal-pair {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+
+  .dir-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.03em;
+  }
+
+  .dir-badge.buy { background: #8fd40022; color: var(--win); }
+  .dir-badge.sell { background: #ff4d5e22; color: var(--loss); }
+
+  .signal-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .signal-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .status-badge {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.02em;
+  }
+
+  .status-badge.win { background: #8fd40018; color: var(--win); }
+  .status-badge.loss { background: #ff4d5e18; color: var(--loss); }
+  .status-badge.open { background: #6b766618; color: var(--text-muted); }
+  .status-badge.expired { background: #d4a90018; color: var(--expired); }
+
+  .signal-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: #3d4834;
+  }
+
+  .empty-state, .loading-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+
+  .empty-state .big {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  #load-more-btn {
+    width: 100%;
+    margin-top: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 11px;
+    border-radius: 9px;
+    cursor: pointer;
+  }
+
+  #load-more-btn:hover { color: var(--text); }
+  #load-more-btn.hidden { display: none; }
+
+  /* ---------- PERIOD FILTER BAR ---------- */
+
+  .period-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .period-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+
+  .period-pill.active {
+    background: var(--accent-dim);
+    border-color: #8fd40055;
+    color: var(--accent);
+  }
+
+  /* ---------- SIGNAL ROW (tappable) ---------- */
+
+  .signal-row {
+    cursor: pointer;
+    transition: border-color 0.12s ease;
+  }
+
+  .signal-row:active { border-color: #8fd40055; }
+
+  .chart-hint {
+    font-size: 9.5px;
+    color: #3d4834;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+
+  /* ---------- TRADINGVIEW MODAL ---------- */
+
+  #tv-modal {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* dynamic viewport height - avoids the mobile address-bar gap that was throwing off touch coordinates while drawing */
+    background: #040504;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+    overscroll-behavior: contain;
+    touch-action: none; /* stops the browser from waiting to decide "is this a scroll or a drag" before passing touches through - that arbitration delay was the cause of needing to hold a drawing before it would move */
+  }
+
+  #tv-modal.open { display: flex; }
+
+  /* Locks the page behind the modal so it can't scroll/rubber-band while
+     you're drawing on the chart - that fighting-for-touch was the cause
+     of the shaky/unresponsive lines. */
+  body.modal-open {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .tv-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    touch-action: none;
+    flex-shrink: 0;
+  }
+
+  .tv-modal-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .tv-modal-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  #tv-close-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  #tv_chart_container {
+    flex: 1;
+    width: 100%;
+    min-height: 0; /* required so flex:1 actually fills remaining space instead of overflowing */
+    touch-action: auto; /* let the chart's own iframe fully own touch/drawing gestures, no interference */
+  }
+
+  .tv-modal-footer {
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    line-height: 1.5;
+    touch-action: none;
+    flex-shrink: 0;
+  }
+
+  .tv-level {
+    font-family: 'JetBrains Mono', monospace;
+    display: inline-block;
+    margin-right: 12px;
+  }
+
+  .tv-level.entry { color: var(--text); }
+  .tv-level.sl { color: var(--loss); }
+
+  /* ---------- SETTINGS MODAL ---------- */
+  /* Reuses #tv-modal's fixed-fullscreen/lock-scroll pattern so it feels
+     consistent with the existing Chart takeover - same isolated,
+     nothing-else-visible behavior. */
+
+  #settings-modal {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    background: #040504;
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+  }
+
+  #settings-modal.open { display: flex; }
+
+  #settings-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 14px 16px 40px;
+  }
+
+  /* Only one screen visible at a time within the modal - same
+     exclusive-view pattern as .dash-view, just scoped to Settings'
+     own internal navigation instead of the main dashboard tabs. */
+  .settings-screen { display: none; }
+  .settings-screen.active { display: block; }
+
+  .settings-group-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 20px 2px 8px;
+  }
+
+  .settings-group-label:first-child { margin-top: 4px; }
+
+  .settings-list {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .settings-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 14px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .settings-row:last-child { border-bottom: none; }
+
+  .settings-row-icon { font-size: 16px; flex-shrink: 0; }
+
+  .settings-row-label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .settings-row-sub {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .settings-row-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .settings-row-soon {
+    color: var(--accent);
+    opacity: 0.7;
+  }
+
+  .settings-row-chevron {
+    color: var(--text-muted);
+    font-size: 16px;
+  }
+
+  #settings-signal-access-row { cursor: default; }
+
+  /* toggle switch */
+  .settings-switch {
+    position: relative;
+    width: 40px;
+    height: 23px;
+    flex-shrink: 0;
+  }
+
+  .settings-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .settings-switch-slider {
+    position: absolute;
+    inset: 0;
+    background: #2a3222;
+    border-radius: 20px;
+    transition: 0.15s;
+    cursor: pointer;
+  }
+
+  .settings-switch-slider::before {
+    content: "";
+    position: absolute;
+    width: 17px;
+    height: 17px;
+    left: 3px;
+    top: 3px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: 0.15s;
+  }
+
+  .settings-switch input:checked + .settings-switch-slider {
+    background: var(--accent-dim);
+  }
+
+  .settings-switch input:checked + .settings-switch-slider::before {
+    transform: translateX(17px);
+    background: var(--accent-bright);
+  }
+
+  /* radio-style picker rows (Confidence / Appearance) */
+  .settings-radio-dot {
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    border: 2px solid var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .settings-row-radio.selected .settings-radio-dot {
+    border-color: var(--accent);
+    background: radial-gradient(var(--accent-bright) 0%, var(--accent-bright) 40%, transparent 44%);
+  }
+
+  .settings-footnote {
+    margin-top: 14px;
+    padding: 0 2px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+
+  .settings-signout {
+    width: 100%;
+    margin-top: 28px;
+    padding: 13px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--loss);
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* profile screen */
+  .profile-avatar {
+    width: 64px;
+    height: 64px;
+    margin: 10px auto 14px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+  }
+
+  .profile-name {
+    text-align: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 20px;
+  }
+
+  .profile-field {
+    padding: 12px 2px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .profile-field-label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+  }
+
+  .profile-field-value { font-size: 14px; }
+
+  /* about screen */
+  .about-logo { font-size: 40px; text-align: center; margin: 10px 0 6px; }
+
+  .about-name {
+    text-align: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .about-version {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-bottom: 18px;
+  }
+
+  .about-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px;
+  }
+
+  .about-features li {
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .about-copyright {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .tv-level.tp { color: var(--win); }
+
+  .app-version {
+    text-align: center;
+    color: #2c331f;
+    font-size: 10.5px;
+    margin-top: 24px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<div id="app-wallpaper">
+  <svg class="wallpaper-bolt b1" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+  <svg class="wallpaper-bolt b2" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+  <svg class="wallpaper-bolt b3" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg>
+
+  <!-- robot artwork -->
+  <div id="wallpaper-robot-slot"><img src="robot.png" alt="" /></div>
+</div>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div class="brand-name">Smart<span>FX</span></div>
+  </div>
+  <button id="signout-btn">Sign Out</button>
+</header>
+
+<div id="bot-status-strip">
+  <span class="status-dot unknown" id="status-dot"></span>
+  <span id="status-text">Checking bot status…</span>
+</div>
+
+<nav id="bottom-nav">
+  <button class="nav-item active" id="nav-dashboard" data-nav="dashboard">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/>
+      <rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
+    </svg>
+    <span>Dashboard</span>
+  </button>
+  <button class="nav-item" id="nav-chart" data-nav="chart">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="5" y1="9" x2="5" y2="17"/>
+      <rect x="3.5" y="11" width="3" height="4" fill="currentColor" stroke="none"/>
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <rect x="10.5" y="8" width="3" height="8" fill="currentColor" stroke="none"/>
+      <line x1="19" y1="7" x2="19" y2="15"/>
+      <rect x="17.5" y="9" width="3" height="4" fill="currentColor" stroke="none"/>
+    </svg>
+    <span>Chart</span>
+  </button>
+  <button class="nav-item" id="nav-settings" data-nav="settings">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    <span>Settings</span>
+  </button>
+</nav>
+
+<nav id="section-jump-bar">
+  <button class="section-jump-btn active" data-target="view-overview">Overview</button>
+  <button class="section-jump-btn" data-target="view-scanner">Scanner</button>
+  <button class="section-jump-btn" data-target="view-activity">Activity</button>
+  <button class="section-jump-btn" data-target="view-history">History</button>
+</nav>
+
+<main>
+
+  <div class="period-bar">
+    <button class="period-pill" data-period="today">Today</button>
+    <button class="period-pill" data-period="yesterday">Yesterday</button>
+    <button class="period-pill" data-period="week">Week</button>
+    <button class="period-pill" data-period="month">Month</button>
+    <button class="period-pill active" data-period="all">All</button>
+  </div>
+
+  <div class="dash-view active" id="view-overview">
+    <div class="section-title" style="margin-top:0;">Latest Signal</div>
+    <div id="latest-signal-card">
+      <div class="loading-state">Loading…</div>
+    </div>
+
+    <div class="section-title">Overview</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Signals</div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-sub" id="stat-total-sub">&nbsp;</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Win Rate</div>
+        <div class="stat-value win-color" id="stat-winrate">—</div>
+        <div class="stat-sub" id="stat-winrate-sub">&nbsp;</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Wins / Losses</div>
+        <div class="stat-value" id="stat-wl">—</div>
+        <div class="stat-sub" id="stat-wl-sub">&nbsp;</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Open Now</div>
+        <div class="stat-value" id="stat-open">—</div>
+        <div class="stat-sub" id="stat-open-sub">&nbsp;</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg R:R</div>
+        <div class="stat-value" id="stat-rr">—</div>
+        <div class="stat-sub" id="stat-rr-sub">&nbsp;</div>
+      </div>
+    </div>
+
+    <div class="section-title">Performance</div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Cumulative Win Rate</div>
+        <div class="chart-current" id="chart-current-value">—</div>
+      </div>
+      <canvas id="perf-canvas"></canvas>
+    </div>
+  </div>
+
+  <div class="dash-view" id="view-scanner">
+    <div class="section-title" style="margin-top:0;">Market Scanner</div>
+    <div id="scanner-container">
+      <div class="loading-state">Loading…</div>
+    </div>
+  </div>
+
+  <div class="dash-view" id="view-activity">
+    <div class="section-title" style="margin-top:0;">Activity Feed</div>
+    <div id="activity-feed-container">
+      <div class="loading-state">Loading…</div>
+    </div>
+  </div>
+
+  <div class="dash-view" id="view-history">
+    <div class="section-title" style="margin-top:0;">Signal History</div>
+    <div class="period-bar" id="market-filter-bar">
+      <button class="period-pill active" data-market="all">All</button>
+      <button class="period-pill" data-market="crypto">Crypto</button>
+      <button class="period-pill" data-market="forex">Forex</button>
+    </div>
+    <div id="signals-container">
+      <div class="loading-state">Loading signals…</div>
+    </div>
+    <button id="load-more-btn" class="hidden">Load more</button>
+  </div>
+
+  <div class="app-version">SMARTFX_DASHBOARD · v2.4</div>
+
+</main>
+
+<div id="tv-modal">
+  <div class="tv-modal-header">
+    <div>
+      <div class="tv-modal-title" id="tv-modal-title">—</div>
+      <div class="tv-modal-sub" id="tv-modal-sub">—</div>
+    </div>
+    <button id="tv-close-btn">✕</button>
+  </div>
+  <div id="tv_chart_container"></div>
+  <div class="tv-modal-footer" id="tv-modal-footer">
+    Use the drawing tools on the chart to mark entry, stop loss, and take-profit levels yourself.
+  </div>
+</div>
+
+<div id="settings-modal">
+  <div class="tv-modal-header">
+    <div>
+      <div class="tv-modal-title" id="settings-modal-title">Settings</div>
+    </div>
+    <button id="settings-back-btn">✕</button>
+  </div>
+
+  <div id="settings-body">
+
+    <!-- MAIN SETTINGS LIST -->
+    <div class="settings-screen active" id="settings-screen-main">
+      <div class="settings-group-label">Account</div>
+      <div class="settings-list">
+        <button class="settings-row" data-goto="settings-screen-profile">
+          <span class="settings-row-icon">👤</span>
+          <span class="settings-row-label">Profile</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
+      </div>
+
+      <div class="settings-group-label">Notifications</div>
+      <div class="settings-list">
+        <div class="settings-row settings-row-toggle">
+          <span class="settings-row-icon">🔔</span>
+          <span class="settings-row-label">
+            Push Notifications
+            <span class="settings-row-sub">Saved now — sending goes live in a future update</span>
+          </span>
+          <label class="settings-switch">
+            <input type="checkbox" id="toggle-push-notifications">
+            <span class="settings-switch-slider"></span>
+          </label>
+        </div>
+        <div class="settings-row settings-row-toggle">
+          <span class="settings-row-icon">📢</span>
+          <span class="settings-row-label">
+            Signal Alerts
+            <span class="settings-row-sub">Saved now — sending goes live in a future update</span>
+          </span>
+          <label class="settings-switch">
+            <input type="checkbox" id="toggle-signal-alerts">
+            <span class="settings-switch-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-group-label">Signal Preferences</div>
+      <div class="settings-list">
+        <button class="settings-row" data-goto="settings-screen-confidence">
+          <span class="settings-row-icon">🎯</span>
+          <span class="settings-row-label">Minimum Confidence</span>
+          <span class="settings-row-value" id="settings-confidence-value">80%</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
+        <button class="settings-row" id="settings-signal-access-row">
+          <span class="settings-row-icon">📊</span>
+          <span class="settings-row-label">Signal Access</span>
+          <span class="settings-row-value settings-row-soon">Coming soon</span>
+        </button>
+      </div>
+
+      <div class="settings-group-label">App</div>
+      <div class="settings-list">
+        <button class="settings-row" data-goto="settings-screen-appearance">
+          <span class="settings-row-icon">🎨</span>
+          <span class="settings-row-label">Appearance</span>
+          <span class="settings-row-value" id="settings-appearance-value">SmartFX Dark</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
+        <button class="settings-row" data-goto="settings-screen-about">
+          <span class="settings-row-icon">ℹ️</span>
+          <span class="settings-row-label">About SmartFX</span>
+          <span class="settings-row-chevron">›</span>
+        </button>
+      </div>
+
+      <button id="settings-signout-btn" class="settings-signout">🚪 Sign Out</button>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="settings-screen" id="settings-screen-profile">
+      <div class="profile-avatar">👤</div>
+      <div class="profile-name" id="profile-name-value">—</div>
+      <div class="profile-field">
+        <div class="profile-field-label">Account Type</div>
+        <div class="profile-field-value">Public</div>
+      </div>
+      <div class="profile-field">
+        <div class="profile-field-label">Member Since</div>
+        <div class="profile-field-value" id="profile-member-since">—</div>
+      </div>
+    </div>
+
+    <!-- MINIMUM CONFIDENCE PICKER -->
+    <div class="settings-screen" id="settings-screen-confidence">
+      <div class="settings-group-label">Only show signals at or above</div>
+      <div class="settings-list" id="confidence-options">
+        <button class="settings-row settings-row-radio" data-confidence="70">
+          <span class="settings-radio-dot"></span>
+          <span class="settings-row-label">70%</span>
+        </button>
+        <button class="settings-row settings-row-radio" data-confidence="80">
+          <span class="settings-radio-dot"></span>
+          <span class="settings-row-label">80%</span>
+        </button>
+        <button class="settings-row settings-row-radio" data-confidence="90">
+          <span class="settings-radio-dot"></span>
+          <span class="settings-row-label">90%</span>
+        </button>
+      </div>
+      <div class="settings-footnote">This filters what shows in Signal History below — it doesn't change what the bot actually sends.</div>
+    </div>
+
+    <!-- APPEARANCE PICKER -->
+    <div class="settings-screen" id="settings-screen-appearance">
+      <div class="settings-group-label">Theme</div>
+      <div class="settings-list" id="appearance-options">
+        <button class="settings-row settings-row-radio" data-appearance="dark">
+          <span class="settings-radio-dot"></span>
+          <span class="settings-row-label">SmartFX Dark</span>
+        </button>
+        <button class="settings-row settings-row-radio" data-appearance="system">
+          <span class="settings-radio-dot"></span>
+          <span class="settings-row-label">System</span>
+          <span class="settings-row-value settings-row-soon">Coming soon</span>
+        </button>
+        <button class="settings-row settings-row-radio" data-appearance="light">
+          <span class="settings-radio-dot"></span>
+          <span class="settings-row-label">Light</span>
+          <span class="settings-row-value settings-row-soon">Coming soon</span>
+        </button>
+      </div>
+      <div class="settings-footnote">SmartFX Dark is the only theme built so far — your choice is saved either way.</div>
+    </div>
+
+    <!-- ABOUT -->
+    <div class="settings-screen" id="settings-screen-about">
+      <div class="about-logo">🤖</div>
+      <div class="about-name">SmartFX Signal Bot</div>
+      <div class="about-version" id="about-version-value">—</div>
+      <ul class="about-features">
+        <li>Smart Money Concepts</li>
+        <li>Market Scanner</li>
+        <li>Signal Analytics</li>
+        <li>AI Analysis</li>
+      </ul>
+      <div class="about-copyright">© 2026 SmartFX</div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  // ==========================================================
+  // SUPABASE CONFIG
+  // ==========================================================
+  const SUPABASE_URL = "https://gvzichtbxctztytkggxp.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_ZQgd4qHRMwWcpfdA64R_HA_xU2GuyfC";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+  // ---------- AUTH GUARD ----------
+  async function requireAuth() {
+    const { data } = await supabaseClient.auth.getSession();
+    if (!data.session) {
+      window.location.href = "index.html";
+      return false;
+    }
+    return true;
+  }
+
+  document.getElementById("signout-btn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "index.html";
+  });
+
+  // ---------- DATA FETCH ----------
+  // Fetches the full signal history once. Stats, chart, period filtering,
+  // and the signal list all derive from this single dataset - keeps
+  // everything in sync and avoids repeated network calls when switching
+  // Today/Week/Month/All.
+  let fullData = [];
+  let errorShown = false;
+
+  async function fetchAllSignals() {
+    const { data, error } = await supabaseClient
+      .from("signals")
+      .select("*")
+      .order("sent_at", { ascending: false });
+
+    if (error) {
+      showFetchError(error);
+      return [];
+    }
+    return data || [];
+  }
+
+  // ---------- BOT STATUS (online / last scan) ----------
+  // Reads the single-row bot_status table the bot overwrites every scan
+  // cycle. Anything under ~2 min old = genuinely online. Older than that
+  // means the bot has actually stopped scanning (crashed, Render spun
+  // down, etc.) rather than just being between cycles - this is real
+  // detection, not a static label.
+  function timeAgoShort(iso) {
+    const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
+  }
+
+  async function refreshBotStatus() {
+    const dot = document.getElementById("status-dot");
+    const text = document.getElementById("status-text");
+
+    const { data, error } = await supabaseClient
+      .from("bot_status")
+      .select("*")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (error || !data || !data.last_scan_at) {
+      dot.className = "status-dot unknown";
+      text.textContent = "Bot status unavailable";
+      return;
+    }
+
+    const secondsSinceScan = (Date.now() - new Date(data.last_scan_at).getTime()) / 1000;
+    const versionText = data.bot_version ? ` · v${data.bot_version}` : "";
+    const smcVersionText = data.smc_version ? ` (smc v${data.smc_version})` : "";
+
+    if (secondsSinceScan < 120) {
+      dot.className = "status-dot online";
+      text.textContent = `Bot online · last scan ${timeAgoShort(data.last_scan_at)}${versionText}${smcVersionText}`;
+    } else if (secondsSinceScan < 600) {
+      dot.className = "status-dot delayed";
+      text.textContent = `Bot delayed · last scan ${timeAgoShort(data.last_scan_at)}${versionText}${smcVersionText}`;
+    } else {
+      dot.className = "status-dot offline";
+      text.textContent = `Bot offline · last scan ${timeAgoShort(data.last_scan_at)}${versionText}${smcVersionText}`;
+    }
+  }
+
+  // ---------- MARKET SCANNER ----------
+  // Reads pair_scan_status - one row per pair, overwritten every scan
+  // cycle by the bot regardless of whether a signal fires. Shows what
+  // the bot is currently seeing on every watched pair, not just the
+  // ones that produced a signal.
+  async function refreshScanner() {
+    const container = document.getElementById("scanner-container");
+
+    const { data, error } = await supabaseClient
+      .from("pair_scan_status")
+      .select("*")
+      .order("confidence", { ascending: false, nullsFirst: false });
+
+    if (error) {
+      container.innerHTML = `<div class="loading-state">Scanner unavailable.</div>`;
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      container.innerHTML = `<div class="loading-state">Waiting for the bot's next scan…</div>`;
+      return;
+    }
+
+    const rows = data.map(row => {
+      const statusRaw = (row.status || "WATCHING").toLowerCase();
+      const statusLabelMap = {
+        signal: "SIGNAL",
+        setup_ready: "SETUP READY",
+        watching: "WATCHING",
+        no_setup: "NO SETUP",
+      };
+      const statusLabel = statusLabelMap[statusRaw] || row.status;
+      const trendArrow = row.trend === "BUY" ? "▲" : row.trend === "SELL" ? "▼" : "–";
+
+      return `
+        <div class="scanner-row">
+          <div class="scanner-left">
+            <span class="scanner-pair">${row.pair}</span>
+            <span class="scanner-trend">${trendArrow} 4H ${row.trend || "—"}</span>
+          </div>
+          <div class="scanner-right">
+            <span class="scanner-confidence">${row.confidence != null ? row.confidence + "%" : "—"}</span>
+            <span class="scanner-status-badge ${statusRaw}">${statusLabel}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    const oldestUpdate = data.reduce((oldest, row) => {
+      const t = new Date(row.updated_at).getTime();
+      return t < oldest ? t : oldest;
+    }, Date.now());
+
+    container.innerHTML = `
+      <div class="scanner-list">${rows}</div>
+      <div class="scanner-updated">Updated ${timeAgoShort(new Date(oldestUpdate).toISOString())}</div>
+    `;
+  }
+
+  // ---------- ACTIVITY FEED ----------
+  // Reads activity_log - only meaningful events (signal sent, trade
+  // closed, pair status changed, bot restarted), not a row per scan
+  // cycle. Bot prunes anything older than 7 days on its side.
+  const FEED_PAGE_SIZE = 15;
+  let feedVisibleCount = FEED_PAGE_SIZE;
+  let feedData = [];
+
+  function feedDotClass(row) {
+    if (row.event_type === "signal_sent") return "signal_sent";
+    if (row.event_type === "bot_restart") return "bot_restart";
+    if (row.event_type === "scan_status_change") return "scan_status_change";
+    if (row.event_type === "trade_outcome") {
+      if (row.message.includes("WIN")) return "trade_outcome_win";
+      if (row.message.includes("LOSS")) return "trade_outcome_loss";
+      if (row.message.includes("EXPIRED")) return "trade_outcome_expired";
+    }
+    return "scan_status_change";
+  }
+
+  function renderFeedRow(row) {
+    const d = new Date(row.created_at);
+    const time = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " +
+                 d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return `
+      <div class="feed-item">
+        <span class="feed-time">${time}</span>
+        <span class="feed-dot ${feedDotClass(row)}"></span>
+        <span class="feed-message">${row.message}</span>
+      </div>
+    `;
+  }
+
+  function renderFeedList() {
+    const container = document.getElementById("activity-feed-container");
+    if (feedData.length === 0) {
+      container.innerHTML = `<div class="loading-state">No activity yet.</div>`;
+      return;
+    }
+
+    const slice = feedData.slice(0, feedVisibleCount);
+    const rows = slice.map(renderFeedRow).join("");
+    const moreAvailable = feedData.length > feedVisibleCount;
+
+    container.innerHTML = `
+      <div class="feed-list">${rows}</div>
+      ${moreAvailable ? `<button class="load-more-feed-btn" id="feed-load-more-btn">Load more</button>` : ""}
+    `;
+
+    const btn = document.getElementById("feed-load-more-btn");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        feedVisibleCount += FEED_PAGE_SIZE;
+        renderFeedList();
+      });
+    }
+  }
+
+  async function refreshActivityFeed() {
+    const { data, error } = await supabaseClient
+      .from("activity_log")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    if (error) {
+      document.getElementById("activity-feed-container").innerHTML =
+        `<div class="loading-state">Activity feed unavailable.</div>`;
+      return;
+    }
+
+    feedData = data || [];
+    renderFeedList();
+  }
+
+  function showFetchError(error) {
+    console.error("Supabase fetch error:", error);
+    if (errorShown) return;
+    errorShown = true;
+    const container = document.getElementById("signals-container");
+    container.innerHTML = `
+      <div class="empty-state" style="text-align:left; background:#ff4d5e0f; border:1px solid #ff4d5e33; border-radius:10px; padding:16px;">
+        <div class="big" style="color:#ff8a94;">Couldn't load signals</div>
+        <div style="font-family:'JetBrains Mono', monospace; font-size:11.5px; color:#ffb3ba; margin-top:8px; word-break:break-word;">
+          ${error.message || "Unknown error"}${error.code ? " (code: " + error.code + ")" : ""}
+        </div>
+      </div>`;
+  }
+
+  // ---------- PERIOD FILTERING ----------
+  let currentPeriod = "all";
+
+  function filterByPeriod(data, period) {
+    if (period === "all") return data;
+
+    const now = new Date();
+
+    // "Yesterday" needs a strict calendar-day window (start of
+    // yesterday through start of today), not just a single cutoff
+    // like the other options - a simple 24h-ago cutoff would drift
+    // across the day depending on what time it's checked.
+    if (period === "yesterday") {
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfYesterday = new Date(startOfToday);
+      startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+      return data.filter(s => {
+        const t = new Date(s.sent_at);
+        return t >= startOfYesterday && t < startOfToday;
+      });
+    }
+
+    let cutoff;
+
+    if (period === "today") {
+      cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (period === "week") {
+      cutoff = new Date(now);
+      cutoff.setDate(cutoff.getDate() - 7);
+    } else if (period === "month") {
+      cutoff = new Date(now);
+      cutoff.setDate(cutoff.getDate() - 30);
+    }
+
+    return data.filter(s => new Date(s.sent_at) >= cutoff);
+  }
+
+  document.querySelectorAll(".period-bar:not(#market-filter-bar) .period-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".period-bar:not(#market-filter-bar) .period-pill").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentPeriod = btn.dataset.period;
+      renderAll();
+    });
+  });
+
+  // ---------- MARKET TYPE FILTERING ----------
+  let currentMarket = "all";
+
+  function filterByMarket(data, market) {
+    if (market === "all") return data;
+    return data.filter(s => s.market_type === market);
+  }
+
+  document.querySelectorAll("#market-filter-bar .period-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#market-filter-bar .period-pill").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentMarket = btn.dataset.market;
+      renderAll();
+    });
+  });
+
+  // ---------- MINIMUM CONFIDENCE FILTERING (Settings) ----------
+  // A display preference for Signal History only, not the bot's real
+  // performance - Overview stats (Win Rate, etc.) deliberately do NOT
+  // pass through this filter, so they always reflect true numbers
+  // rather than a subset the person happens to have chosen to see.
+  // Signals with no confidence value at all are kept visible rather
+  // than hidden, since there's nothing to evaluate against the
+  // threshold.
+  let currentMinConfidence = 80;
+
+  function filterByConfidence(data, minConfidence) {
+    return data.filter(s => s.confidence == null || s.confidence >= minConfidence);
+  }
+
+  // ---------- STATS RENDERING ----------
+  function calcAvgRR(data) {
+    const withLevels = data.filter(s => s.entry != null && s.sl != null && s.tp1 != null);
+    if (withLevels.length === 0) return null;
+
+    const ratios = withLevels.map(s => {
+      const risk = Math.abs(s.entry - s.sl);
+      const reward = Math.abs(s.tp1 - s.entry);
+      return risk > 0 ? reward / risk : null;
+    }).filter(r => r !== null);
+
+    if (ratios.length === 0) return null;
+    return ratios.reduce((a, b) => a + b, 0) / ratios.length;
+  }
+
+  // Compares the last 7 days against the 7 days before that, so stat
+  // cards can show a "+X vs last week" style delta like the reference
+  // design - independent of whatever period pill is currently active.
+  function calcWeekDelta(fullDataset) {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7);
+    const fourteenDaysAgo = new Date(now); fourteenDaysAgo.setDate(now.getDate() - 14);
+
+    const thisWeek = fullDataset.filter(s => new Date(s.sent_at) >= sevenDaysAgo);
+    const lastWeek = fullDataset.filter(s => {
+      const d = new Date(s.sent_at);
+      return d >= fourteenDaysAgo && d < sevenDaysAgo;
+    });
+
+    function winRateOf(arr) {
+      const w = arr.filter(s => s.status === "WIN").length;
+      const l = arr.filter(s => s.status === "LOSS").length;
+      const decided = w + l;
+      return decided > 0 ? (w / decided) * 100 : null;
+    }
+
+    return {
+      totalThisWeek: thisWeek.length,
+      totalLastWeek: lastWeek.length,
+      winRateThisWeek: winRateOf(thisWeek),
+      winRateLastWeek: winRateOf(lastWeek),
+    };
+  }
+
+  function deltaHTML(current, previous, suffix = "") {
+    if (previous === null || previous === undefined || current === null) return "";
+    const diff = current - previous;
+    if (Math.abs(diff) < 0.05) return `<span class="stat-delta" style="color:var(--text-muted)">±0${suffix} vs last wk</span>`;
+    const cls = diff > 0 ? "up" : "down";
+    const sign = diff > 0 ? "+" : "";
+    return `<span class="stat-delta ${cls}">${sign}${diff.toFixed(1)}${suffix} vs last wk</span>`;
+  }
+
+  function renderStats(data) {
+    const total = data.length;
+    const wins = data.filter(s => s.status === "WIN").length;
+    const losses = data.filter(s => s.status === "LOSS").length;
+    const expired = data.filter(s => s.status === "EXPIRED").length;
+    const open = data.filter(s => s.status === "OPEN").length;
+    const decided = wins + losses;
+    const winRate = decided > 0 ? ((wins / decided) * 100).toFixed(1) : "—";
+
+    document.getElementById("stat-total").textContent = total;
+    document.getElementById("stat-total-sub").textContent = `${expired} expired`;
+
+    document.getElementById("stat-winrate").textContent = decided > 0 ? winRate + "%" : "—";
+
+    // 7-day trend delta, computed from the full unfiltered dataset so it
+    // stays meaningful regardless of which period pill is active.
+    const wk = calcWeekDelta(fullData);
+    const winRateSub = decided > 0 ? `of ${decided} decided` : "no decided trades yet";
+    const delta = deltaHTML(wk.winRateThisWeek, wk.winRateLastWeek, "%");
+    document.getElementById("stat-winrate-sub").innerHTML = winRateSub + (delta ? " · " + delta : "");
+
+    document.getElementById("stat-wl").innerHTML =
+      `<span style="color:var(--win)">${wins}</span> / <span style="color:var(--loss)">${losses}</span>`;
+    document.getElementById("stat-wl-sub").textContent = "win / loss";
+
+    document.getElementById("stat-open").textContent = open;
+    document.getElementById("stat-open-sub").textContent = "awaiting outcome";
+
+    const avgRR = calcAvgRR(data);
+    document.getElementById("stat-rr").textContent = avgRR ? `1:${avgRR.toFixed(2)}` : "—";
+    document.getElementById("stat-rr-sub").textContent = "risk : reward (TP1)";
+
+    document.getElementById("chart-current-value").textContent = decided > 0 ? winRate + "%" : "—";
+  }
+
+  // ---------- LATEST SIGNAL (featured card) ----------
+  const FACTOR_LABELS = {
+    trend_match: "4H Trend Match",
+    adx_strong: "ADX Strong",
+    ema_aligned: "EMA Aligned",
+    rsi_direction: "RSI Direction",
+    volume_above_avg: "Volume Above Avg",
+    bos: "Break of Structure",
+    choch: "Change of Character",
+    liquidity_sweep: "Liquidity Sweep",
+    fair_value_gap: "Fair Value Gap",
+    doji_reversal: "Doji Reversal",
+    bollinger_room: "Bollinger Room",
+    order_block: "Order Block",
+    htf_structure: "HTF Structure",
+    ema_distance_ok: "Near EMA21",
+    trend_fresh: "Trend Fresh",
+    strong_candle: "Strong Candle",
+    atr_healthy: "ATR Healthy",
+  };
+
+  function renderChecklist(factors) {
+    if (!factors) return "";
+
+    const items = Object.entries(factors).map(([key, value]) => {
+      const label = FACTOR_LABELS[key] || key;
+      let iconClass, icon, itemClass;
+      if (value === true) {
+        iconClass = "pass"; icon = "✓"; itemClass = "pass";
+      } else if (value === false) {
+        iconClass = "fail"; icon = "✕"; itemClass = "fail";
+      } else {
+        iconClass = "na"; icon = "–"; itemClass = "na";
+      }
+      return `
+        <div class="checklist-item ${itemClass}">
+          <span class="checklist-icon ${iconClass}">${icon}</span>
+          <span class="checklist-label">${label}</span>
+        </div>`;
+    }).join("");
+
+    const passCount = Object.values(factors).filter(v => v === true).length;
+    const totalCount = Object.values(factors).filter(v => v !== null).length;
+
+    return `
+      <button class="checklist-toggle" id="checklist-toggle-btn">
+        <span id="checklist-arrow">▸</span> Strategy Confirmation (${passCount}/${totalCount} passed)
+      </button>
+      <div class="checklist-grid" id="checklist-grid">${items}</div>
+    `;
+  }
+
+  function renderLatestSignal(data) {
+    const container = document.getElementById("latest-signal-card");
+    if (data.length === 0) {
+      container.innerHTML = `<div class="loading-state">No signals yet.</div>`;
+      return;
+    }
+
+    // fullData is already sorted newest-first from the query
+    const s = fullData[0];
+    const dirClass = s.direction === "BUY" ? "buy" : "sell";
+    const statusLabel = s.status === "WIN" && s.final_level ? `WIN · ${s.final_level}` : s.status;
+
+    container.innerHTML = `
+      <div class="ls-top">
+        <div>
+          <div class="ls-pair-row">
+            <span class="ls-pair">${s.pair}</span>
+            <span class="dir-badge ${dirClass}">${s.direction}</span>
+            <span class="status-badge ${statusClass(s.status)}">${statusLabel}</span>
+          </div>
+          <div class="ls-meta">#${s.signal_id} · ${s.timeframe} · ${formatDate(s.sent_at)}</div>
+        </div>
+        ${s.confidence != null ? `
+        <div class="ls-confidence">
+          <div class="ls-confidence-value">${s.confidence}%</div>
+          <div class="ls-confidence-label">Confidence</div>
+        </div>` : ""}
+      </div>
+      <div class="ls-levels">
+        <div class="ls-level"><div class="ls-level-label">Entry</div><div class="ls-level-value">${s.entry}</div></div>
+        <div class="ls-level sl"><div class="ls-level-label">SL</div><div class="ls-level-value">${s.sl}</div></div>
+        <div class="ls-level tp"><div class="ls-level-label">TP1</div><div class="ls-level-value">${s.tp1}</div></div>
+        <div class="ls-level tp"><div class="ls-level-label">TP2</div><div class="ls-level-value">${s.tp2}</div></div>
+        ${s.atr_at_signal != null ? `<div class="ls-level atr"><div class="ls-level-label">ATR</div><div class="ls-level-value">${s.atr_at_signal}</div></div>` : ""}
+      </div>
+      ${renderChecklist(s.confirmation_factors)}
+    `;
+
+    container.style.cursor = "pointer";
+    container.onclick = (e) => {
+      // Don't open the chart if the tap was on the checklist toggle -
+      // that should just expand/collapse instead.
+      if (e.target.closest("#checklist-toggle-btn")) return;
+      openTradingViewModal(s);
+    };
+
+    const toggleBtn = document.getElementById("checklist-toggle-btn");
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const grid = document.getElementById("checklist-grid");
+        const arrow = document.getElementById("checklist-arrow");
+        grid.classList.toggle("open");
+        arrow.textContent = grid.classList.contains("open") ? "▾" : "▸";
+      });
+    }
+  }
+
+  // ---------- CHART (cumulative win rate over time, no library) ----------
+  function renderChart(data) {
+    const canvas = document.getElementById("perf-canvas");
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 190 * dpr;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = 190;
+    ctx.clearRect(0, 0, w, h);
+
+    // chart wants oldest-first regardless of the list's newest-first order
+    const chronological = [...data].sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at));
+    const decidedOnly = chronological.filter(s => s.status === "WIN" || s.status === "LOSS");
+
+    if (decidedOnly.length < 2) {
+      ctx.fillStyle = "#3d4834";
+      ctx.font = "12px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Not enough decided trades yet to chart", w / 2, h / 2);
+      return;
+    }
+
+    let wins = 0;
+    const cumulative = decidedOnly.map((s, i) => {
+      if (s.status === "WIN") wins++;
+      return (wins / (i + 1)) * 100;
+    });
+
+    const min = Math.min(...cumulative, 0);
+    const max = Math.max(...cumulative, 100);
+    const pad = 10;
+    const usableH = h - pad * 2;
+
+    function xAt(i) { return (i / (cumulative.length - 1)) * w; }
+    function yAt(v) { return pad + usableH - ((v - min) / (max - min || 1)) * usableH; }
+
+    ctx.beginPath();
+    ctx.moveTo(0, yAt(cumulative[0]));
+    cumulative.forEach((v, i) => ctx.lineTo(xAt(i), yAt(v)));
+    ctx.lineTo(w, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "rgba(143, 212, 0, 0.18)");
+    grad.addColorStop(1, "rgba(143, 212, 0, 0)");
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    cumulative.forEach((v, i) => {
+      const x = xAt(i), y = yAt(v);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = "#8fd400";
+    ctx.lineWidth = 2;
+    ctx.lineJoin = "round";
+    ctx.stroke();
+
+    const lastX = xAt(cumulative.length - 1);
+    const lastY = yAt(cumulative[cumulative.length - 1]);
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#b4ff39";
+    ctx.fill();
+  }
+
+  // ---------- SIGNAL LIST RENDERING (client-side paginated from fullData) ----------
+  const PAGE_SIZE = 20;
+  let visibleCount = PAGE_SIZE;
+  let currentFiltered = [];
+
+  function statusClass(status) {
+    if (status === "WIN") return "win";
+    if (status === "LOSS") return "loss";
+    if (status === "EXPIRED") return "expired";
+    return "open";
+  }
+
+  function formatDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " · " +
+           d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
+  function renderSignalRow(s) {
+    const dirClass = s.direction === "BUY" ? "buy" : "sell";
+    const statusLabel = s.status === "WIN" && s.final_level ? `WIN · ${s.final_level}` : s.status;
+
+    return `
+      <div class="signal-row" data-signal-id="${s.signal_id}">
+        <div class="signal-left">
+          <div class="signal-pair-row">
+            <span class="signal-pair">${s.pair}</span>
+            <span class="dir-badge ${dirClass}">${s.direction}</span>
+          </div>
+          <div class="signal-meta">${s.timeframe} · Entry ${s.entry} · ${formatDate(s.sent_at)}</div>
+          <div class="chart-hint">Tap to open chart →</div>
+        </div>
+        <div class="signal-right">
+          <span class="status-badge ${statusClass(s.status)}">${statusLabel}</span>
+          <span class="signal-id">#${s.signal_id}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSignalList() {
+    if (errorShown) return;
+    const container = document.getElementById("signals-container");
+    const marketFiltered = filterByConfidence(filterByMarket(currentFiltered, currentMarket), currentMinConfidence);
+    const slice = marketFiltered.slice(0, visibleCount);
+
+    if (slice.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="big">No signals match this filter</div>
+          Try a different market, or a wider time range.
+        </div>`;
+      document.getElementById("load-more-btn").classList.add("hidden");
+      return;
+    }
+
+    container.innerHTML = slice.map(renderSignalRow).join("");
+    container.querySelectorAll(".signal-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const id = row.dataset.signalId;
+        const signal = marketFiltered.find(s => String(s.signal_id) === String(id));
+        if (signal) openTradingViewModal(signal);
+      });
+    });
+
+    const loadMoreBtn = document.getElementById("load-more-btn");
+    if (marketFiltered.length > visibleCount) {
+      loadMoreBtn.classList.remove("hidden");
+    } else {
+      loadMoreBtn.classList.add("hidden");
+    }
+  }
+
+  document.getElementById("load-more-btn").addEventListener("click", () => {
+    visibleCount += PAGE_SIZE;
+    renderSignalList();
+  });
+
+  // ---------- MASTER RENDER (called on load + whenever period changes) ----------
+  function renderAll() {
+    currentFiltered = filterByPeriod(fullData, currentPeriod);
+    visibleCount = PAGE_SIZE;
+    renderLatestSignal(fullData); // always the true latest, regardless of any filter
+    renderStats(currentFiltered);
+    renderChart(currentFiltered);
+    renderSignalList(); // reads currentFiltered further narrowed by currentMarket inside itself
+  }
+
+  // ---------- TRADINGVIEW MODAL ----------
+  // Maps SmartFX's pair/timeframe format to TradingView's symbol/interval format.
+  const TV_SYMBOL_MAP = {
+    "BTCUSDT": "BINANCE:BTCUSDT",
+    "ETHUSDT": "BINANCE:ETHUSDT",
+    "SOLUSDT": "BINANCE:SOLUSDT",
+    "EUR/USD": "FX:EURUSD",
+    "GBP/USD": "FX:GBPUSD",
+    "USD/JPY": "FX:USDJPY",
+    "XAU/USD": "OANDA:XAUUSD",
+  };
+
+  const TV_INTERVAL_MAP = {
+    "15m": "15",
+    "1h": "60",
+    "4h": "240",
+  };
+
+  let tvWidget = null;
+  let scrollYBeforeModal = 0;
+
+  function openTradingViewModal(signal) {
+    const modal = document.getElementById("tv-modal");
+    const symbol = signal ? (TV_SYMBOL_MAP[signal.pair] || "BINANCE:BTCUSDT") : "BINANCE:BTCUSDT";
+    const interval = signal ? (TV_INTERVAL_MAP[signal.timeframe] || "60") : "60";
+
+    if (signal) {
+      document.getElementById("tv-modal-title").textContent = `${signal.pair} · ${signal.direction}`;
+      document.getElementById("tv-modal-sub").textContent = `Signal #${signal.signal_id} · ${formatDate(signal.sent_at)}`;
+      document.getElementById("tv-modal-footer").innerHTML = `
+        <span class="tv-level entry">Entry ${signal.entry}</span>
+        <span class="tv-level sl">SL ${signal.sl}</span>
+        <span class="tv-level tp">TP1 ${signal.tp1}</span>
+        <span class="tv-level tp">TP2 ${signal.tp2}</span>
+        <span class="tv-level tp">TP3 ${signal.tp3}</span>
+      `;
+    } else {
+      document.getElementById("tv-modal-title").textContent = "Chart";
+      document.getElementById("tv-modal-sub").textContent = "Tap the symbol search to switch pairs";
+      document.getElementById("tv-modal-footer").innerHTML = `
+        <span style="color:var(--text-muted)">Use the search icon on the chart to pick any pair, and the drawing tools on the left to mark it up.</span>
+      `;
+    }
+
+    // Lock the page behind the modal so it can't scroll/rubber-band while
+    // the chart is open - this is what caused drawing to feel shaky.
+    scrollYBeforeModal = window.scrollY;
+    document.body.classList.add("modal-open");
+    document.body.style.top = `-${scrollYBeforeModal}px`;
+
+    modal.classList.add("open");
+    document.getElementById("nav-dashboard").classList.remove("active");
+    document.getElementById("nav-chart").classList.add("active");
+
+    const container = document.getElementById("tv_chart_container");
+    container.innerHTML = ""; // clear any previous widget before re-initializing
+
+    // Waiting a couple frames before creating the widget lets the modal's
+    // fullscreen layout (100dvh, flex sizing) fully settle first. Creating
+    // it immediately was the cause of drawings landing in the wrong spot -
+    // the widget was measuring its container before that container had
+    // reached its final on-screen size/position.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        tvWidget = new TradingView.widget({
+          container_id: "tv_chart_container",
+          autosize: true,
+          symbol: symbol,
+          interval: interval,
+          timezone: "Etc/UTC",
+          theme: "dark",
+          style: "1",
+          locale: "en",
+          toolbar_bg: "#0e120d",
+          enable_publishing: false,
+          allow_symbol_change: true,
+          hide_side_toolbar: false,
+          withdateranges: true,
+          save_image: false,
+          studies: [],
+        });
+      });
+    });
+  }
+
+  function closeTradingViewModal() {
+    document.getElementById("tv-modal").classList.remove("open");
+    document.body.classList.remove("modal-open");
+    document.body.style.top = "";
+    window.scrollTo(0, scrollYBeforeModal);
+    document.getElementById("nav-chart").classList.remove("active");
+    document.getElementById("nav-dashboard").classList.add("active");
+  }
+
+  document.getElementById("nav-chart").addEventListener("click", () => openTradingViewModal(null));
+
+  document.getElementById("nav-settings").addEventListener("click", () => openSettingsModal());
+
+  document.getElementById("tv-close-btn").addEventListener("click", closeTradingViewModal);
+
+  // ---------- SETTINGS MODAL ----------
+  let settingsLoaded = false;
+  let currentAppearance = "dark";
+
+  async function loadUserSettings() {
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const user = sessionData.session?.user;
+    if (!user) return;
+
+    const { data, error } = await supabaseClient
+      .from("user_settings")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!error && data) {
+      currentMinConfidence = data.min_confidence;
+      currentAppearance = data.appearance;
+      document.getElementById("toggle-push-notifications").checked = data.push_notifications;
+      document.getElementById("toggle-signal-alerts").checked = data.signal_alerts;
+    } else {
+      // No saved row yet - use the defaults already set in the UI
+      // and in the JS state above, don't write anything until the
+      // person actually changes something.
+      document.getElementById("toggle-push-notifications").checked = true;
+      document.getElementById("toggle-signal-alerts").checked = true;
+    }
+
+    document.getElementById("settings-confidence-value").textContent = currentMinConfidence + "%";
+    document.querySelectorAll("#confidence-options .settings-row-radio").forEach(row => {
+      row.classList.toggle("selected", Number(row.dataset.confidence) === currentMinConfidence);
+    });
+
+    const appearanceLabels = { dark: "SmartFX Dark", system: "System", light: "Light" };
+    document.getElementById("settings-appearance-value").textContent = appearanceLabels[currentAppearance] || "SmartFX Dark";
+    document.querySelectorAll("#appearance-options .settings-row-radio").forEach(row => {
+      row.classList.toggle("selected", row.dataset.appearance === currentAppearance);
+    });
+
+    settingsLoaded = true;
+  }
+
+  async function saveUserSettings(partial) {
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const user = sessionData.session?.user;
+    if (!user) return;
+
+    await supabaseClient
+      .from("user_settings")
+      .upsert({
+        user_id: user.id,
+        min_confidence: currentMinConfidence,
+        appearance: currentAppearance,
+        push_notifications: document.getElementById("toggle-push-notifications").checked,
+        signal_alerts: document.getElementById("toggle-signal-alerts").checked,
+        updated_at: new Date().toISOString(),
+        ...partial,
+      });
+  }
+
+  function gotoSettingsScreen(screenId) {
+    document.querySelectorAll(".settings-screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(screenId).classList.add("active");
+    document.getElementById("settings-body").scrollTop = 0;
+
+    const titles = {
+      "settings-screen-main": "Settings",
+      "settings-screen-profile": "Profile",
+      "settings-screen-confidence": "Minimum Confidence",
+      "settings-screen-appearance": "Appearance",
+      "settings-screen-about": "About SmartFX",
+    };
+    document.getElementById("settings-modal-title").textContent = titles[screenId] || "Settings";
+    document.getElementById("settings-back-btn").textContent = screenId === "settings-screen-main" ? "✕" : "←";
+  }
+
+  async function openSettingsModal() {
+    document.getElementById("settings-modal").classList.add("open");
+    document.body.classList.add("modal-open");
+    document.body.style.top = `-${window.scrollY}px`;
+    gotoSettingsScreen("settings-screen-main");
+
+    document.getElementById("about-version-value").textContent = document.querySelector(".app-version").textContent;
+
+    const { data: sessionData } = await supabaseClient.auth.getSession();
+    const user = sessionData.session?.user;
+    if (user) {
+      document.getElementById("profile-name-value").textContent = user.email ? user.email.split("@")[0] : "Account";
+      const joined = new Date(user.created_at);
+      document.getElementById("profile-member-since").textContent =
+        joined.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    }
+
+    if (!settingsLoaded) await loadUserSettings();
+  }
+
+  function closeSettingsModal() {
+    document.getElementById("settings-modal").classList.remove("open");
+    document.body.classList.remove("modal-open");
+    const y = document.body.style.top;
+    document.body.style.top = "";
+    if (y) window.scrollTo(0, parseInt(y || "0") * -1);
+  }
+
+  document.getElementById("settings-back-btn").addEventListener("click", () => {
+    const onMain = document.getElementById("settings-screen-main").classList.contains("active");
+    if (onMain) {
+      closeSettingsModal();
+    } else {
+      gotoSettingsScreen("settings-screen-main");
+    }
+  });
+
+  document.querySelectorAll(".settings-row[data-goto]").forEach(row => {
+    row.addEventListener("click", () => gotoSettingsScreen(row.dataset.goto));
+  });
+
+  // Toggles save immediately on change - a real, persisted preference,
+  // even though nothing sends push notifications yet (that's a
+  // separate, bigger build).
+  document.getElementById("toggle-push-notifications").addEventListener("change", () => saveUserSettings({}));
+  document.getElementById("toggle-signal-alerts").addEventListener("change", () => saveUserSettings({}));
+
+  document.querySelectorAll("#confidence-options .settings-row-radio").forEach(row => {
+    row.addEventListener("click", () => {
+      currentMinConfidence = Number(row.dataset.confidence);
+      document.getElementById("settings-confidence-value").textContent = currentMinConfidence + "%";
+      document.querySelectorAll("#confidence-options .settings-row-radio").forEach(r =>
+        r.classList.toggle("selected", r === row)
+      );
+      saveUserSettings({ min_confidence: currentMinConfidence });
+      renderSignalList(); // apply immediately to Signal History
+      gotoSettingsScreen("settings-screen-main");
+    });
+  });
+
+  document.querySelectorAll("#appearance-options .settings-row-radio").forEach(row => {
+    row.addEventListener("click", () => {
+      currentAppearance = row.dataset.appearance;
+      const appearanceLabels = { dark: "SmartFX Dark", system: "System", light: "Light" };
+      document.getElementById("settings-appearance-value").textContent = appearanceLabels[currentAppearance];
+      document.querySelectorAll("#appearance-options .settings-row-radio").forEach(r =>
+        r.classList.toggle("selected", r === row)
+      );
+      saveUserSettings({ appearance: currentAppearance });
+      // Only "dark" is actually built right now (and is already the
+      // page's only theme), so System/Light save the choice for real
+      // but there's nothing visually different to apply yet.
+      gotoSettingsScreen("settings-screen-main");
+    });
+  });
+
+  document.getElementById("settings-signout-btn").addEventListener("click", async () => {
+    if (confirm("Sign out of SmartFX? You can sign back in anytime.")) {
+      await supabaseClient.auth.signOut();
+      window.location.href = "index.html";
+    }
+  });
+
+  // ---------- SECTION JUMP BAR (exclusive views, not scroll-to) ----------
+  document.querySelectorAll(".section-jump-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const target = document.getElementById(btn.dataset.target);
+      if (!target) return;
+
+      document.querySelectorAll(".section-jump-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      document.querySelectorAll(".dash-view").forEach(v => v.classList.remove("active"));
+      target.classList.add("active");
+
+      // scroll back to the top of main so the newly-shown view starts
+      // from its own top instead of wherever the page happened to be
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+
+  // ---------- INIT ----------
+  async function init() {
+    const ok = await requireAuth();
+    if (!ok) return;
+
+    fullData = await fetchAllSignals();
+    renderAll();
+
+    refreshBotStatus();
+    setInterval(refreshBotStatus, 30000); // keep the "Xs/Xm ago" text live and catch the bot going offline
+
+    refreshScanner();
+    setInterval(refreshScanner, 30000);
+
+    refreshActivityFeed();
+    setInterval(refreshActivityFeed, 30000);
+  }
+
+  init();
+</script>
+
+</body>
+</html>

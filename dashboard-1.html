@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SmartFX — Dashboard</title>
+<meta name="theme-color" content="#050705">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050705;
+    --surface: #0c100c;
+    --surface-2: #111711;
+    --surface-3: #161c15;
+    --border: #1c271a;
+    --border-glow: rgba(143, 212, 0, 0.28);
+    --accent: #8fd400;
+    --accent-bright: #b4ff39;
+    --accent-dim: rgba(143, 212, 0, 0.13);
+    --accent-glow: rgba(143, 212, 0, 0.22);
+    --win: #8fd400;
+    --loss: #ff4d5e;
+    --expired: #d4a900;
+    --text: #eef4e8;
+    --text-muted: #6b7666;
+    --text-dim: #3d4834;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ========== BACKGROUND ========== */
+  #app-wallpaper {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background: #050705;
+    background-image: radial-gradient(ellipse 90% 50% at 50% -10%, #0f1a08 0%, transparent 55%);
+  }
+
+  #app-wallpaper-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(180deg, rgba(5,7,5,0.4) 0%, rgba(5,7,5,0.82) 45%, rgba(5,7,5,0.96) 100%);
+  }
+
+  /* ========== HEADER ========== */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    background: rgba(5, 7, 5, 0.88);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent-bright), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 14px;
+    color: #0a0f07;
+    box-shadow: 0 0 14px var(--accent-glow);
+  }
+
+  .brand-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.02em;
+  }
+  .brand-name span { color: var(--accent); }
+
+  #signout-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 7px 13px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  /* ========== BOT STATUS ========== */
+  #bot-status-strip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: rgba(5, 7, 5, 0.75);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-dot.online {
+    background: var(--win);
+    box-shadow: 0 0 8px rgba(143, 212, 0, 0.65);
+  }
+  .status-dot.offline { background: var(--loss); }
+  .status-dot.unknown { background: #3d4834; }
+
+  /* ========== SECTION TABS ========== */
+  #section-jump-bar {
+    position: sticky;
+    top: 56px;
+    z-index: 40;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 10px 14px;
+    background: rgba(5, 7, 5, 0.9);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+  }
+  #section-jump-bar::-webkit-scrollbar { display: none; }
+
+  .section-jump-btn {
+    flex-shrink: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .section-jump-btn.active {
+    background: var(--accent-dim);
+    border-color: rgba(143, 212, 0, 0.45);
+    color: var(--accent-bright);
+    box-shadow: 0 0 12px rgba(143, 212, 0, 0.12);
+  }
+
+  /* ========== MAIN ========== */
+  main {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 16px 14px 110px;
+  }
+
+  .dash-view { display: none; }
+  .dash-view.active { display: block; }
+
+  /* ========== PERIOD PILLS ========== */
+  .period-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .period-bar::-webkit-scrollbar { display: none; }
+
+  .period-pill {
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 6px 13px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .period-pill.active {
+    background: var(--accent-dim);
+    border-color: rgba(143, 212, 0, 0.4);
+    color: var(--accent);
+  }
+
+  /* ========== SECTION TITLE ========== */
+  .section-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 22px 0 11px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::before {
+    content: "";
+    width: 3px;
+    height: 11px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* ========== GLOW CARD (shared style) ========== */
+  .glow-card {
+    background: linear-gradient(165deg, rgba(16, 22, 16, 0.97) 0%, rgba(10, 14, 10, 0.98) 100%);
+    border: 1px solid var(--border-glow);
+    border-radius: 14px;
+    padding: 16px;
+    position: relative;
+    box-shadow: 0 0 24px rgba(143, 212, 0, 0.06), inset 0 1px 0 rgba(143, 212, 0, 0.08);
+  }
+  .glow-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 12px; right: 12px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(143, 212, 0, 0.45), transparent);
+  }
+
+  /* ========== LATEST SIGNAL ========== */
+  .ls-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .ls-pair {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+  }
+  .ls-pair-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+  }
+  .dir-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 5px;
+    letter-spacing: 0.03em;
+  }
+  .dir-badge.buy {
+    background: rgba(143, 212, 0, 0.14);
+    color: var(--win);
+    border: 1px solid rgba(143, 212, 0, 0.25);
+  }
+  .dir-badge.sell {
+    background: rgba(255, 77, 94, 0.12);
+    color: var(--loss);
+    border: 1px solid rgba(255, 77, 94, 0.25);
+  }
+  .status-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .status-badge.win { background: rgba(143, 212, 0, 0.12); color: var(--win); }
+  .status-badge.loss { background: rgba(255, 77, 94, 0.12); color: var(--loss); }
+  .status-badge.open { background: rgba(107, 118, 102, 0.15); color: var(--text-muted); }
+  .status-badge.expired { background: rgba(212, 169, 0, 0.12); color: var(--expired); }
+
+  .ls-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .ls-confidence-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .ls-confidence-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+    text-align: right;
+  }
+
+  .ls-levels {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+  }
+  .ls-level {
+    background: rgba(0,0,0,0.28);
+    border: 1px solid rgba(255,255,255,0.03);
+    border-radius: 8px;
+    padding: 8px 3px;
+    text-align: center;
+  }
+  .ls-level-label {
+    font-size: 8.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .ls-level-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    margin-top: 3px;
+  }
+  .ls-level.sl .ls-level-value { color: var(--loss); }
+  .ls-level.tp .ls-level-value { color: var(--win); }
+  .ls-level.atr .ls-level-value { color: var(--expired); }
+
+  .checklist-toggle {
+    margin-top: 12px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* ========== PORTFOLIO ========== */
+  .portfolio-balance {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 4px 0 14px;
+  }
+  .portfolio-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .portfolio-stat {
+    text-align: center;
+    background: rgba(0,0,0,0.25);
+    border-radius: 8px;
+    padding: 10px 4px;
+  }
+  .portfolio-stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .portfolio-stat-label {
+    font-size: 9.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+  }
+  .view-portfolio-btn {
+    width: 100%;
+    background: var(--accent-dim);
+    border: 1px solid rgba(143, 212, 0, 0.32);
+    color: var(--accent-bright);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 11px;
+    border-radius: 9px;
+    cursor: pointer;
+  }
+
+  /* ========== BOT INFO ========== */
+  .bot-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .bot-info-item {
+    text-align: center;
+    background: rgba(0,0,0,0.22);
+    border-radius: 8px;
+    padding: 11px 4px;
+  }
+  .bot-info-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .bot-info-label {
+    font-size: 9.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-top: 2px;
+  }
+  .bot-meta-line {
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ========== STATS ========== */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 15px;
+  }
+  .stat-label {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 5px;
+  }
+  .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 25px;
+    font-weight: 700;
+  }
+  .stat-value.win-color { color: var(--win); }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ========== CONFIDENCE BANDS ========== */
+  .conf-list {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .conf-band-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 14px;
+    background: var(--surface);
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13.5px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .conf-band-row:last-child { border-bottom: none; }
+  .conf-band-label { flex: 1; }
+  .conf-band-rate {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--win);
+  }
+
+  /* ========== SCANNER ========== */
+  .scanner-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .scanner-pair {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .scanner-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .scanner-right {
+    text-align: right;
+  }
+  .scanner-conf {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .scanner-state {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 20px;
+    margin-top: 3px;
+    display: inline-block;
+  }
+  .scanner-state.watching {
+    background: rgba(107, 118, 102, 0.15);
+    color: var(--text-muted);
+  }
+  .scanner-state.setup {
+    background: rgba(212, 169, 0, 0.15);
+    color: var(--expired);
+  }
+  .scanner-state.signal {
+    background: rgba(143, 212, 0, 0.15);
+    color: var(--win);
+  }
+
+  /* ========== HISTORY STATS BAR (from your reference) ========== */
+  .history-stats-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    background: linear-gradient(165deg, rgba(14, 20, 14, 0.98) 0%, rgba(9, 13, 9, 0.99) 100%);
+    border: 1px solid rgba(143, 212, 0, 0.35);
+    border-radius: 14px;
+    padding: 14px 6px;
+    margin-bottom: 14px;
+    box-shadow: 0 0 28px rgba(143, 212, 0, 0.08), inset 0 1px 0 rgba(143, 212, 0, 0.12);
+    position: relative;
+  }
+  .history-stats-bar::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 10px; right: 10px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(143, 212, 0, 0.5), transparent);
+  }
+  .hstat {
+    text-align: center;
+    padding: 4px 2px;
+    border-right: 1px solid rgba(143, 212, 0, 0.12);
+  }
+  .hstat:last-child { border-right: none; }
+  .hstat-icon {
+    width: 22px;
+    height: 22px;
+    margin: 0 auto 6px;
+    opacity: 0.9;
+  }
+  .hstat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .hstat-value.win { color: var(--win); }
+  .hstat-value.loss { color: var(--loss); }
+  .hstat-value.expired { color: var(--expired); }
+  .hstat-label {
+    font-size: 8.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 3px;
+  }
+
+  /* ========== SIGNAL ROW ========== */
+  .signal-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 13px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .signal-pair {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+  .signal-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+  .signal-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .signal-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-dim);
+  }
+
+  /* ========== BOTTOM NAV ========== */
+  #bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 60;
+    display: flex;
+    background: rgba(7, 10, 7, 0.96);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .nav-item {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 4px 9px;
+    cursor: pointer;
+  }
+  .nav-item span { font-size: 10.5px; font-weight: 500; }
+  .nav-item.active { color: var(--accent); }
+  .nav-item svg { width: 20px; height: 20px; }
+
+  /* ========== VERSION FOOTER ========== */
+  .version-footer {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    margin-top: 28px;
+    padding-bottom: 8px;
+  }
+
+  .loading-state {
+    text-align: center;
+    padding: 36px 16px;
+    color: var(--text-muted);
+    font-size: 13.5px;
+  }
+</style>
+</head>
+<body>
+
+<div id="app-wallpaper"></div>
+<div id="app-wallpaper-overlay"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div class="brand-name">Smart<span>FX</span></div>
+  </div>
+  <button id="signout-btn">Sign Out</button>
+</header>
+
+<!-- BOT STATUS -->
+<div id="bot-status-strip">
+  <span class="status-dot online" id="status-dot"></span>
+  <span id="status-text">Bot online · last scan 15s ago · v2.18.0 (smc v1.1.0)</span>
+</div>
+
+<!-- SECTION TABS -->
+<nav id="section-jump-bar">
+  <button class="section-jump-btn active" data-target="view-overview">Overview</button>
+  <button class="section-jump-btn" data-target="view-scanner">Scanner</button>
+  <button class="section-jump-btn" data-target="view-activity">Activity</button>
+  <button class="section-jump-btn" data-target="view-history">History</button>
+</nav>
+
+<main>
+
+  <!-- ==================== OVERVIEW ==================== -->
+  <div class="dash-view active" id="view-overview">
+
+    <div class="period-bar">
+      <button class="period-pill">Today</button>
+      <button class="period-pill">Yesterday</button>
+      <button class="period-pill">Week</button>
+      <button class="period-pill">Month</button>
+      <button class="period-pill active">ALL</button>
+    </div>
+
+    <!-- Latest Signal -->
+    <div class="section-title">Latest Signal</div>
+    <div class="glow-card" id="latest-signal-card">
+      <div class="ls-top">
+        <div>
+          <div class="ls-pair-row">
+            <span class="ls-pair">USD/JPY</span>
+            <span class="dir-badge sell">SELL</span>
+            <span class="status-badge win">WIN · TP1</span>
+          </div>
+          <div class="ls-meta">#0187 · 1h · 9 Sept · 1:35</div>
+        </div>
+        <div>
+          <div class="ls-confidence-value">83%</div>
+          <div class="ls-confidence-label">Confidence</div>
+        </div>
+      </div>
+      <div class="ls-levels">
+        <div class="ls-level">
+          <div class="ls-level-label">Entry</div>
+          <div class="ls-level-value">153.79318</div>
+        </div>
+        <div class="ls-level sl">
+          <div class="ls-level-label">SL</div>
+          <div class="ls-level-value">154.25291</div>
+        </div>
+        <div class="ls-level tp">
+          <div class="ls-level-label">TP1</div>
+          <div class="ls-level-value">153.63802</div>
+        </div>
+        <div class="ls-level tp">
+          <div class="ls-level-label">TP2</div>
+          <div class="ls-level-value">153.08826</div>
+        </div>
+        <div class="ls-level atr">
+          <div class="ls-level-label">ATR</div>
+          <div class="ls-level-value">30.6 pips</div>
+        </div>
+      </div>
+      <button class="checklist-toggle">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        Strategy Confirmation (10/16 passed)
+      </button>
+    </div>
+
+    <!-- Portfolio -->
+    <div class="section-title">Portfolio</div>
+    <div class="glow-card">
+      <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Balance</div>
+      <div class="portfolio-balance">$38.52</div>
+      <div class="portfolio-stats">
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-value">$0.00</div>
+          <div class="portfolio-stat-label">Today</div>
+        </div>
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-value">0</div>
+          <div class="portfolio-stat-label">Open Trades</div>
+        </div>
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-value">$38.52</div>
+          <div class="portfolio-stat-label">Available</div>
+        </div>
+      </div>
+      <button class="view-portfolio-btn" id="view-portfolio-btn">View Portfolio</button>
+    </div>
+
+    <!-- Bot Status -->
+    <div class="section-title">Bot Status</div>
+    <div class="glow-card">
+      <div class="bot-info-grid">
+        <div class="bot-info-item">
+          <div class="bot-info-value">34 Days</div>
+          <div class="bot-info-label">Trading For</div>
+        </div>
+        <div class="bot-info-item">
+          <div class="bot-info-value">6 Aug 2026</div>
+          <div class="bot-info-label">Started On</div>
+        </div>
+        <div class="bot-info-item">
+          <div class="bot-info-value">2:03</div>
+          <div class="bot-info-label">Active Since</div>
+        </div>
+      </div>
+      <div class="bot-meta-line">
+        <div><span class="status-dot online" style="display:inline-block; margin-right:6px;"></span>Bot online · last scan 15s ago · v2.18.0 (smc v1.1.0)</div>
+        <div style="margin-top:3px;">Last trade: ETHUSDT BUY — 8 Sept, 20:43</div>
+      </div>
+    </div>
+
+    <!-- Performance -->
+    <div class="section-title">Performance</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Signals</div>
+        <div class="stat-value">186</div>
+        <div class="stat-sub">34 expired</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Win Rate</div>
+        <div class="stat-value win-color">63.2%</div>
+        <div class="stat-sub">of 152 decided</div>
+      </div>
+    </div>
+
+    <!-- Confidence Performance -->
+    <div class="section-title">Confidence Performance</div>
+    <div class="conf-list">
+      <button class="conf-band-row">
+        <span class="conf-band-label">70–79%</span>
+        <span class="conf-band-rate">—</span>
+      </button>
+      <button class="conf-band-row">
+        <span class="conf-band-label">80–89%</span>
+        <span class="conf-band-rate">64.6%</span>
+      </button>
+      <button class="conf-band-row">
+        <span class="conf-band-label">90–100%</span>
+        <span class="conf-band-rate">58.5%</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== SCANNER ==================== -->
+  <div class="dash-view" id="view-scanner">
+    <div class="section-title" style="margin-top:0;">Market Scanner</div>
+
+    <div class="scanner-card">
+      <div>
+        <div class="scanner-pair">BTCUSDT</div>
+        <div class="scanner-meta">4H Trend · BUY</div>
+      </div>
+      <div class="scanner-right">
+        <div class="scanner-conf">72%</div>
+        <div class="scanner-state watching">WATCHING</div>
+      </div>
+    </div>
+
+    <div class="scanner-card">
+      <div>
+        <div class="scanner-pair">ETHUSDT</div>
+        <div class="scanner-meta">4H Trend · BUY</div>
+      </div>
+      <div class="scanner-right">
+        <div class="scanner-conf">68%</div>
+        <div class="scanner-state watching">WATCHING</div>
+      </div>
+    </div>
+
+    <div class="scanner-card">
+      <div>
+        <div class="scanner-pair">SOLUSDT</div>
+        <div class="scanner-meta">4H Trend · SELL</div>
+      </div>
+      <div class="scanner-right">
+        <div class="scanner-conf">81%</div>
+        <div class="scanner-state setup">SETUP READY</div>
+      </div>
+    </div>
+
+    <div class="scanner-card">
+      <div>
+        <div class="scanner-pair">EUR/USD</div>
+        <div class="scanner-meta">4H Trend · BUY</div>
+      </div>
+      <div class="scanner-right">
+        <div class="scanner-conf">59%</div>
+        <div class="scanner-state watching">WATCHING</div>
+      </div>
+    </div>
+
+    <div class="scanner-card">
+      <div>
+        <div class="scanner-pair">GBP/USD</div>
+        <div class="scanner-meta">4H Trend · BUY</div>
+      </div>
+      <div class="scanner-right">
+        <div class="scanner-conf">77%</div>
+        <div class="scanner-state setup">SETUP READY</div>
+      </div>
+    </div>
+
+    <div class="scanner-card">
+      <div>
+        <div class="scanner-pair">USD/JPY</div>
+        <div class="scanner-meta">4H Trend · SELL</div>
+      </div>
+      <div class="scanner-right">
+        <div class="scanner-conf">83%</div>
+        <div class="scanner-state signal">SIGNAL</div>
+      </div>
+    </div>
+
+    <div class="scanner-card">
+      <div>
+        <div class="scanner-pair">XAU/USD</div>
+        <div class="scanner-meta">4H Trend · BUY</div>
+      </div>
+      <div class="scanner-right">
+        <div class="scanner-conf">64%</div>
+        <div class="scanner-state watching">WATCHING</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== ACTIVITY ==================== -->
+  <div class="dash-view" id="view-activity">
+    <div class="section-title" style="margin-top:0;">Activity</div>
+    <div class="loading-state">Activity feed redesign in next version…</div>
+  </div>
+
+  <!-- ==================== HISTORY ==================== -->
+  <div class="dash-view" id="view-history">
+    <div class="section-title" style="margin-top:0;">Signal History</div>
+
+    <!-- Stats bar matching your reference style -->
+    <div class="history-stats-bar">
+      <div class="hstat">
+        <div class="hstat-value">186</div>
+        <div class="hstat-label">Total Signals</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-value win">96</div>
+        <div class="hstat-label">Wins</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-value loss">56</div>
+        <div class="hstat-label">Losses</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-value expired">34</div>
+        <div class="hstat-label">Expired</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-value win">63.2%</div>
+        <div class="hstat-label">Win Rate</div>
+      </div>
+    </div>
+
+    <div class="period-bar" style="margin-bottom:12px;">
+      <button class="period-pill active">ALL</button>
+      <button class="period-pill">Crypto</button>
+      <button class="period-pill">Forex</button>
+    </div>
+
+    <!-- Sample signal rows -->
+    <div class="signal-row">
+      <div>
+        <div class="ls-pair-row">
+          <span class="signal-pair">GBP/USD</span>
+          <span class="dir-badge buy">BUY</span>
+        </div>
+        <div class="signal-meta">1h · Entry 1.35365 · 7 Sept · 11:16</div>
+      </div>
+      <div class="signal-right">
+        <span class="status-badge open">OPEN</span>
+        <span class="signal-id">#0181</span>
+      </div>
+    </div>
+
+    <div class="signal-row">
+      <div>
+        <div class="ls-pair-row">
+          <span class="signal-pair">EUR/USD</span>
+          <span class="dir-badge buy">BUY</span>
+        </div>
+        <div class="signal-meta">1h · Entry 1.16236 · 7 Sept · 10:14</div>
+      </div>
+      <div class="signal-right">
+        <span class="status-badge open">OPEN</span>
+        <span class="signal-id">#0180</span>
+      </div>
+    </div>
+
+    <div class="signal-row">
+      <div>
+        <div class="ls-pair-row">
+          <span class="signal-pair">GBP/USD</span>
+          <span class="dir-badge sell">SELL</span>
+        </div>
+        <div class="signal-meta">1h · Entry 1.35135 · 7 Sept · 2:03</div>
+      </div>
+      <div class="signal-right">
+        <span class="status-badge loss">LOSS</span>
+        <span class="signal-id">#0179</span>
+      </div>
+    </div>
+
+    <div class="signal-row">
+      <div>
+        <div class="ls-pair-row">
+          <span class="signal-pair">USD/JPY</span>
+          <span class="dir-badge sell">SELL</span>
+        </div>
+        <div class="signal-meta">1h · Entry 156.13679 · 6 Sept · 22:01</div>
+      </div>
+      <div class="signal-right">
+        <span class="status-badge win">WIN · TP2</span>
+        <span class="signal-id">#0178</span>
+      </div>
+    </div>
+
+    <div class="signal-row">
+      <div>
+        <div class="ls-pair-row">
+          <span class="signal-pair">BTCUSDT</span>
+          <span class="dir-badge buy">BUY</span>
+        </div>
+        <div class="signal-meta">1h · Entry 80039.9 · 6 Sept · 4:00</div>
+      </div>
+      <div class="signal-right">
+        <span class="status-badge loss">LOSS</span>
+        <span class="signal-id">#0177</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="version-footer">SMARTFX_DASHBOARD · v2.75</div>
+</main>
+
+<!-- BOTTOM NAV -->
+<nav id="bottom-nav">
+  <button class="nav-item active" id="nav-dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/>
+      <rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
+    </svg>
+    <span>Dashboard</span>
+  </button>
+  <button class="nav-item" id="nav-chart">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="5" y1="9" x2="5" y2="17"/><rect x="3.5" y="11" width="3" height="4" fill="currentColor" stroke="none"/>
+      <line x1="12" y1="5" x2="12" y2="19"/><rect x="10.5" y="8" width="3" height="8" fill="currentColor" stroke="none"/>
+      <line x1="19" y1="7" x2="19" y2="15"/><rect x="17.5" y="9" width="3" height="4" fill="currentColor" stroke="none"/>
+    </svg>
+    <span>Chart</span>
+  </button>
+  <button class="nav-item" id="nav-settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    <span>Settings</span>
+  </button>
+</nav>
+
+<script>
+  // Section switching
+  document.querySelectorAll('.section-jump-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.section-jump-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.dash-view').forEach(v => v.classList.remove('active'));
+      const target = document.getElementById(btn.dataset.target);
+      if (target) target.classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+</script>
+</body>
+</html>
